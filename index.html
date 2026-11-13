@@ -549,11 +549,12 @@
 
     ctx.restore();
 
-    // --- Iluminación: cono direccional + halo, con parpadeo ---
+    // --- Iluminación: cono direccional (o círculo al esconderse) + halo, con parpadeo ---
     const cx = player.x - camX, cy = player.y - camY;
     const flick = 1 + Math.sin(performance.now() / 70) * 0.05 + (Math.random() - 0.5) * 0.05;
     const battN = player.battery / 100;
-    const vision = player.hidden ? 0 : BASE_VISION * flick * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
+    const coneVision = BASE_VISION * flick * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
+    const hideVision = BASE_VISION * 0.82 * flick;   // luz en círculo dentro del armario
 
     mctx.globalCompositeOperation = "source-over";
     mctx.fillStyle = "#000"; mctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -562,16 +563,23 @@
     const ha = mctx.createRadialGradient(cx, cy, 0, cx, cy, AMBIENT_R);
     ha.addColorStop(0, "rgba(120,120,130,0.85)"); ha.addColorStop(1, "rgba(0,0,0,0)");
     mctx.fillStyle = ha; mctx.beginPath(); mctx.arc(cx, cy, AMBIENT_R, 0, 7); mctx.fill();
-    // cono de linterna (cálido)
-    if (vision > 1) {
+    if (player.hidden) {
+      // Linterna en círculo (vista radial) mientras estás en el armario
+      const gr = mctx.createRadialGradient(cx, cy, AMBIENT_R * 0.4, cx, cy, hideVision);
+      gr.addColorStop(0, "rgba(255,250,235,1)");
+      gr.addColorStop(0.65, "rgba(230,224,210,0.6)");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      mctx.fillStyle = gr; mctx.beginPath(); mctx.arc(cx, cy, hideVision, 0, 7); mctx.fill();
+    } else if (coneVision > 1) {
+      // Cono de linterna (cálido) hacia el frente
       mctx.save();
       mctx.beginPath(); mctx.moveTo(cx, cy);
-      mctx.arc(cx, cy, vision, player.face - CONE_HALF, player.face + CONE_HALF); mctx.closePath(); mctx.clip();
-      const gc = mctx.createRadialGradient(cx, cy, AMBIENT_R * 0.5, cx, cy, vision);
+      mctx.arc(cx, cy, coneVision, player.face - CONE_HALF, player.face + CONE_HALF); mctx.closePath(); mctx.clip();
+      const gc = mctx.createRadialGradient(cx, cy, AMBIENT_R * 0.5, cx, cy, coneVision);
       gc.addColorStop(0, "rgba(255,244,214,1)");
       gc.addColorStop(0.55, "rgba(240,224,180,0.72)");
       gc.addColorStop(1, "rgba(0,0,0,0)");
-      mctx.fillStyle = gc; mctx.fillRect(cx - vision, cy - vision, vision * 2, vision * 2);
+      mctx.fillStyle = gc; mctx.fillRect(cx - coneVision, cy - coneVision, coneVision * 2, coneVision * 2);
       mctx.restore();
     }
     ctx.globalCompositeOperation = "multiply";
@@ -584,11 +592,10 @@
       vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(120,0,0," + (fearPulse * 0.5).toFixed(3) + ")");
       ctx.fillStyle = vg; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     }
-    // Escondido: casi todo negro con un hueco mínimo
+    // Escondido: etiqueta sutil (la luz ahora es un círculo)
     if (player.hidden) {
-      ctx.fillStyle = "rgba(0,0,0,0.82)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-      ctx.fillStyle = "rgba(180,180,190,0.5)"; ctx.font = "13px Courier New"; ctx.textAlign = "center";
-      ctx.fillText("· escondido ·  (E para salir)", cx, cy + 46);
+      ctx.fillStyle = "rgba(190,190,200,0.55)"; ctx.font = "13px Courier New"; ctx.textAlign = "center";
+      ctx.fillText("· escondido ·  (E para salir)", cx, cy + hideVision * 0.72 + 8);
       ctx.textAlign = "left";
     }
 
