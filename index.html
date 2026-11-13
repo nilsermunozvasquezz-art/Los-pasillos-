@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Los Pasillos</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: "Courier New", Courier, monospace;
+    color: #c8c8c8;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #wrap {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+  }
+  canvas {
+    display: block;
+    background: #000;
+    image-rendering: pixelated;
+    max-width: 100%;
+    max-height: 100%;
+    touch-action: none;
+  }
+
+  /* --- HUD --- */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px rgba(0,0,0,0.9);
+    pointer-events: none;
+    z-index: 5;
+  }
+  #keys b { color: #ffcf4d; }
+  #msg {
+    color: #d14b4b;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity .25s;
+  }
+  #msg.show { opacity: 1; }
+
+  /* --- Overlays --- */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at center, rgba(20,0,0,.6), rgba(0,0,0,.97));
+    z-index: 10;
+  }
+  .screen.hidden { display: none; }
+  .screen h1 {
+    font-size: clamp(32px, 9vw, 72px);
+    letter-spacing: 6px;
+    color: #b11;
+    text-shadow: 0 0 20px rgba(180,0,0,.7), 0 0 2px #000;
+    margin-bottom: 10px;
+  }
+  .screen h1.win { color: #6ad46a; text-shadow: 0 0 20px rgba(60,200,60,.6); }
+  .screen p { max-width: 460px; line-height: 1.7; font-size: 15px; color: #9a9a9a; margin-bottom: 26px; }
+  .screen p .hi { color: #ffcf4d; }
+  button {
+    font-family: inherit;
+    font-size: 17px;
+    letter-spacing: 3px;
+    padding: 14px 34px;
+    background: transparent;
+    color: #ddd;
+    border: 1px solid #b11;
+    cursor: pointer;
+    transition: all .18s;
+    text-transform: uppercase;
+  }
+  button:hover { background: #b11; color: #fff; box-shadow: 0 0 22px rgba(180,0,0,.6); }
+  .hint { margin-top: 22px; font-size: 12px; color: #555; letter-spacing: 1px; }
+  .flicker { animation: flick 5s infinite; }
+  @keyframes flick {
+    0%,19%,21%,80%,100% { opacity: 1; }
+    20% { opacity: .35; }
+    82% { opacity: .55; }
+  }
+
+  /* --- Touch controls --- */
+  #touch {
+    position: fixed;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    display: none;
+  }
+  #stick {
+    position: absolute;
+    bottom: 32px; left: 32px;
+    width: 128px; height: 128px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.15);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #nub {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 52px; height: 52px;
+    margin: -26px 0 0 -26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.3);
+  }
+</style>
+</head>
+<body>
+  <div id="wrap"><canvas id="game"></canvas></div>
+
+  <div id="hud">
+    <div id="keys">LLAVES: <b><span id="keyCount">0</span>/5</b></div>
+    <div id="msg"></div>
+    <div id="time">00:00</div>
+  </div>
+
+  <div id="touch">
+    <div id="stick"><div id="nub"></div></div>
+  </div>
+
+  <!-- Start -->
+  <div class="screen" id="startScreen">
+    <h1 class="flicker">LOS PASILLOS</h1>
+    <p>Despiertas en un complejo a oscuras. La única salida está cerrada.
+       Encuentra las <span class="hi">5 llaves</span> ocultas en los pasillos
+       y llega a la <span class="hi">puerta</span> para escapar.<br><br>
+       Algo más deambula aquí dentro. No dejes que te alcance.</p>
+    <button id="startBtn">Entrar</button>
+    <div class="hint" id="startHint">WASD / Flechas para moverte · Sonido recomendado</div>
+  </div>
+
+  <!-- Game over -->
+  <div class="screen hidden" id="overScreen">
+    <h1>TE ATRAPÓ</h1>
+    <p id="overText">No lograste escapar de los pasillos.</p>
+    <button id="retryBtn">Intentar de nuevo</button>
+  </div>
+
+  <!-- Win -->
+  <div class="screen hidden" id="winScreen">
+    <h1 class="win">ESCAPASTE</h1>
+    <p id="winText">Cruzaste la puerta con las 5 llaves. Por ahora, estás a salvo.</p>
+    <button id="againBtn">Jugar otra vez</button>
+  </div>
+
+<script>
+"use strict";
+(() => {
+  // ---------------------------------------------------------------- Config
+  const TILE = 48;            // tamaño de celda en px (mundo)
+  const COLS = 21;           // dimensiones del laberinto (impares)
+  const ROWS = 21;
+  const PLAYER_R = 11;
+  const PLAYER_SPEED = 2.6;
+  const ENEMY_SPEED = 1.7;
+  const ENEMY_CHASE_SPEED = 2.35;
+  const VISION = 150;        // radio de la linterna en px
+  const KEY_COUNT = 5;
+  const ENEMY_SIGHT = 240;   // a qué distancia el monstruo te detecta
+
+  // ---------------------------------------------------------------- Canvas
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  let VIEW_W = 760, VIEW_H = 540;
+
+  function resize() {
+    VIEW_W = Math.min(window.innerWidth, 920);
+    VIEW_H = Math.min(window.innerHeight, 680);
+    canvas.width = VIEW_W;
+    canvas.height = VIEW_H;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------------------------------------------------------- Maze
+  // grid[y][x]: 1 = pared, 0 = pasillo
+  let grid = [];
+
+  function generateMaze() {
+    grid = Array.from({ length: ROWS }, () => Array(COLS).fill(1));
+    // Recursive backtracker sobre celdas impares
+    const stack = [[1, 1]];
+    grid[1][1] = 0;
+    const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    while (stack.length) {
+      const [cx, cy] = stack[stack.length - 1];
+      const options = [];
+      for (const [dx, dy] of dirs) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && grid[ny][nx] === 1) {
+          options.push([nx, ny, dx, dy]);
+        }
+      }
+      if (options.length) {
+        const [nx, ny, dx, dy] = options[(Math.random() * options.length) | 0];
+        grid[cy + dy / 2][cx + dx / 2] = 0;
+        grid[ny][nx] = 0;
+        stack.push([nx, ny]);
+      } else {
+        stack.pop();
+      }
+    }
+    // Abrir algunas paredes extra para crear bucles (menos callejones = más tensión)
+    for (let i = 0; i < 24; i++) {
+      const x = 1 + 2 * ((Math.random() * ((COLS - 1) / 2)) | 0);
+      const y = 1 + 2 * ((Math.random() * ((ROWS - 1) / 2)) | 0);
+      const [dx, dy] = dirs[(Math.random() * 4) | 0];
+      const wx = x + dx / 2, wy = y + dy / 2;
+      if (wx > 0 && wx < COLS - 1 && wy > 0 && wy < ROWS - 1) grid[wy][wx] = 0;
+    }
+  }
+
+  function isWall(px, py) {
+    const gx = Math.floor(px / TILE), gy = Math.floor(py / TILE);
+    if (gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS) return true;
+    return grid[gy][gx] === 1;
+  }
+
+  // Lista de celdas de pasillo
+  function floorCells() {
+    const cells = [];
+    for (let y = 1; y < ROWS - 1; y++)
+      for (let x = 1; x < COLS - 1; x++)
+        if (grid[y][x] === 0) cells.push([x, y]);
+    return cells;
+  }
+
+  // Distancia BFS (en celdas) desde una celda a todas las demás
+  function bfsFrom(sx, sy) {
+    const dist = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
+    dist[sy][sx] = 0;
+    const q = [[sx, sy]];
+    let head = 0;
+    while (head < q.length) {
+      const [x, y] = q[head++];
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS &&
+            grid[ny][nx] === 0 && dist[ny][nx] === -1) {
+          dist[ny][nx] = dist[y][x] + 1;
+          q.push([nx, ny]);
+        }
+      }
+    }
+    return dist;
+  }
+
+  // ---------------------------------------------------------------- Estado
+  const player = { x: 0, y: 0, dx: 0, dy: 0 };
+  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false };
+  let keys = [];            // {x,y,taken}
+  let door = { x: 0, y: 0, gx: 0, gy: 0 };
+  let collected = 0;
+  let running = false;
+  let startTime = 0, elapsed = 0;
+  let fearPulse = 0;        // 0..1 intensidad del "miedo" (cercanía monstruo)
+
+  function cellCenter(cx, cy) { return { x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2 }; }
+
+  function setup() {
+    generateMaze();
+
+    // Jugador arriba-izquierda
+    const p = cellCenter(1, 1);
+    player.x = p.x; player.y = p.y; player.dx = 0; player.dy = 0;
+
+    const startDist = bfsFrom(1, 1);
+    const cells = floorCells().filter(([x, y]) => startDist[y][x] >= 0);
+
+    // Puerta: la celda más lejana del inicio
+    let far = cells[0], farD = -1;
+    for (const [x, y] of cells) {
+      if (startDist[y][x] > farD) { farD = startDist[y][x]; far = [x, y]; }
+    }
+    door.gx = far[0]; door.gy = far[1];
+    const dc = cellCenter(door.gx, door.gy);
+    door.x = dc.x; door.y = dc.y;
+
+    // Llaves: celdas bien repartidas y lejanas (preferimos callejones)
+    keys = [];
+    const candidates = cells
+      .filter(([x, y]) => startDist[y][x] > 4 && !(x === door.gx && y === door.gy))
+      .sort((a, b) => startDist[b[1]][b[0]] - startDist[a[1]][a[0]]);
+
+    const chosen = [];
+    const minSep = 4; // separación mínima en celdas
+    for (const c of candidates) {
+      if (chosen.length >= KEY_COUNT) break;
+      if (chosen.every(k => Math.abs(k[0] - c[0]) + Math.abs(k[1] - c[1]) >= minSep)) {
+        chosen.push(c);
+      }
+    }
+    // Relleno por si no alcanzan con la separación
+    for (const c of candidates) {
+      if (chosen.length >= KEY_COUNT) break;
+      if (!chosen.some(k => k[0] === c[0] && k[1] === c[1])) chosen.push(c);
+    }
+    for (const [x, y] of chosen) {
+      const kc = cellCenter(x, y);
+      keys.push({ x: kc.x, y: kc.y, taken: false });
+    }
+
+    // Enemigo: lejos del jugador
+    let estart = cells[(cells.length * 0.6) | 0];
+    for (const [x, y] of cells) {
+      if (startDist[y][x] > ROWS * 0.6) { estart = [x, y]; break; }
+    }
+    const ec = cellCenter(estart[0], estart[1]);
+    enemy.x = ec.x; enemy.y = ec.y; enemy.path = []; enemy.repathT = 0; enemy.chasing = false;
+
+    collected = 0;
+    updateHud();
+    fearPulse = 0;
+    startTime = performance.now();
+    elapsed = 0;
+  }
+
+  // ---------------------------------------------------------------- Input
+  const pressed = {};
+  const KEYMAP = {
+    ArrowUp: "up", KeyW: "up",
+    ArrowDown: "down", KeyS: "down",
+    ArrowLeft: "left", KeyA: "left",
+    ArrowRight: "right", KeyD: "right",
+  };
+  addEventListener("keydown", e => {
+    if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = true; e.preventDefault(); }
+  });
+  addEventListener("keyup", e => {
+    if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = false; e.preventDefault(); }
+  });
+
+  // Joystick táctil
+  const touch = { active: false, dx: 0, dy: 0 };
+  const stick = document.getElementById("stick");
+  const nub = document.getElementById("nub");
+  function stickStart(e) { touch.active = true; stickMove(e); }
+  function stickMove(e) {
+    if (!touch.active) return;
+    e.preventDefault();
+    const t = e.touches ? e.touches[0] : e;
+    const r = stick.getBoundingClientRect();
+    let dx = t.clientX - (r.left + r.width / 2);
+    let dy = t.clientY - (r.top + r.height / 2);
+    const max = r.width / 2;
+    const mag = Math.hypot(dx, dy);
+    if (mag > max) { dx = dx / mag * max; dy = dy / mag * max; }
+    nub.style.transform = `translate(${dx}px, ${dy}px)`;
+    const dead = 8;
+    touch.dx = mag > dead ? dx / max : 0;
+    touch.dy = mag > dead ? dy / max : 0;
+  }
+  function stickEnd() {
+    touch.active = false; touch.dx = 0; touch.dy = 0;
+    nub.style.transform = "translate(0,0)";
+  }
+  stick.addEventListener("touchstart", stickStart, { passive: false });
+  stick.addEventListener("touchmove", stickMove, { passive: false });
+  stick.addEventListener("touchend", stickEnd);
+  stick.addEventListener("touchcancel", stickEnd);
+  stick.addEventListener("mousedown", stickStart);
+  addEventListener("mousemove", e => { if (touch.active) stickMove(e); });
+  addEventListener("mouseup", stickEnd);
+
+  if ("ontouchstart" in window) {
+    document.getElementById("touch").style.display = "block";
+    document.getElementById("startHint").textContent = "Usa el joystick para moverte · Sonido recomendado";
+  }
+
+  // ---------------------------------------------------------------- Audio (WebAudio, sin archivos)
+  let actx = null, droneGain = null, heartTimer = null;
+  function initAudio() {
+    if (actx) return;
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      // Drone grave continuo
+      const o1 = actx.createOscillator(), o2 = actx.createOscillator();
+      o1.type = "sine"; o1.frequency.value = 55;
+      o2.type = "sine"; o2.frequency.value = 58.7;
+      droneGain = actx.createGain(); droneGain.gain.value = 0.04;
+      o1.connect(droneGain); o2.connect(droneGain); droneGain.connect(actx.destination);
+      o1.start(); o2.start();
+    } catch (e) { actx = null; }
+  }
+  function beep(freq, dur, type, vol) {
+    if (!actx) return;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || "square"; o.frequency.value = freq;
+    g.gain.value = 0; o.connect(g); g.connect(actx.destination);
+    const t = actx.currentTime;
+    g.gain.linearRampToValueAtTime(vol || 0.15, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.15));
+    o.start(t); o.stop(t + (dur || 0.15) + 0.02);
+  }
+  function heartbeat() {
+    if (!running || !actx) return;
+    const near = fearPulse; // 0..1
+    if (near > 0.08) {
+      beep(45, 0.12, "sine", 0.18 + near * 0.25);
+      setTimeout(() => beep(38, 0.14, "sine", 0.14 + near * 0.2), 150);
+    }
+    const interval = 1100 - near * 750; // más cerca = más rápido
+    heartTimer = setTimeout(heartbeat, Math.max(320, interval));
+  }
+
+  // ---------------------------------------------------------------- Update
+  function tryMove(obj, nx, ny, r) {
+    // Colisión por ejes para deslizarse por paredes
+    if (!isWall(nx + (obj.vx > 0 ? r : -r), obj.y) &&
+        !isWall(nx + (obj.vx > 0 ? r : -r), obj.y - r + 1) &&
+        !isWall(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) {
+      obj.x = nx;
+    }
+    if (!isWall(obj.x, ny + (obj.vy > 0 ? r : -r)) &&
+        !isWall(obj.x - r + 1, ny + (obj.vy > 0 ? r : -r)) &&
+        !isWall(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) {
+      obj.y = ny;
+    }
+  }
+
+  function enemyRepath() {
+    const ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE);
+    const px = Math.floor(player.x / TILE), py = Math.floor(player.y / TILE);
+    let tx, ty;
+    if (enemy.chasing) { tx = px; ty = py; }
+    else {
+      // vagar: destino aleatorio en pasillo
+      const cells = floorCells();
+      const c = cells[(Math.random() * cells.length) | 0];
+      tx = c[0]; ty = c[1];
+    }
+    // BFS desde el enemigo hasta el objetivo, reconstruyendo camino
+    const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    const seen = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    seen[ey][ex] = true;
+    const q = [[ex, ey]]; let head = 0, found = false;
+    while (head < q.length) {
+      const [x, y] = q[head++];
+      if (x === tx && y === ty) { found = true; break; }
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS &&
+            grid[ny][nx] === 0 && !seen[ny][nx]) {
+          seen[ny][nx] = true; prev[ny][nx] = [x, y]; q.push([nx, ny]);
+        }
+      }
+    }
+    const path = [];
+    if (found) {
+      let cur = [tx, ty];
+      while (cur && !(cur[0] === ex && cur[1] === ey)) {
+        path.push(cellCenter(cur[0], cur[1]));
+        cur = prev[cur[1]][cur[0]];
+      }
+      path.reverse();
+    }
+    enemy.path = path;
+  }
+
+  function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+
+  function update(dt) {
+    // --- Jugador ---
+    let ix = (pressed.right ? 1 : 0) - (pressed.left ? 1 : 0) + touch.dx;
+    let iy = (pressed.down ? 1 : 0) - (pressed.up ? 1 : 0) + touch.dy;
+    const mag = Math.hypot(ix, iy);
+    if (mag > 1) { ix /= mag; iy /= mag; }
+    player.vx = ix; player.vy = iy;
+    const sp = PLAYER_SPEED * dt;
+    tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
+
+    // --- Llaves ---
+    for (const k of keys) {
+      if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 10) {
+        k.taken = true; collected++;
+        updateHud();
+        beep(880, 0.1, "triangle", 0.2);
+        setTimeout(() => beep(1320, 0.12, "triangle", 0.2), 90);
+        flashMsg(collected >= KEY_COUNT ? "¡Todas las llaves! Busca la puerta." : "Llave encontrada");
+      }
+    }
+
+    // --- Puerta ---
+    if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
+      if (collected >= KEY_COUNT) { win(); return; }
+      else flashMsg("La puerta está cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s).");
+    }
+
+    // --- Enemigo ---
+    const dToPlayer = dist(enemy.x, enemy.y, player.x, player.y);
+    const wasChasing = enemy.chasing;
+    enemy.chasing = dToPlayer < ENEMY_SIGHT;
+    enemy.repathT -= dt;
+    if (enemy.repathT <= 0 || (enemy.chasing && !wasChasing) || enemy.path.length === 0) {
+      enemyRepath();
+      enemy.repathT = enemy.chasing ? 24 : 70; // recalcula seguido al perseguir
+    }
+    if (enemy.path.length) {
+      const tgt = enemy.path[0];
+      const edx = tgt.x - enemy.x, edy = tgt.y - enemy.y;
+      const ed = Math.hypot(edx, edy) || 1;
+      const esp = (enemy.chasing ? ENEMY_CHASE_SPEED : ENEMY_SPEED) * dt;
+      enemy.vx = edx; enemy.vy = edy;
+      enemy.x += edx / ed * esp;
+      enemy.y += edy / ed * esp;
+      if (ed < esp + 1) enemy.path.shift();
+    }
+
+    // Miedo según cercanía (para audio + visual)
+    fearPulse = Math.max(0, 1 - dToPlayer / (ENEMY_SIGHT + 60));
+    if (enemy.chasing) fearPulse = Math.max(fearPulse, 0.35);
+
+    // ¿Te atrapó?
+    if (dToPlayer < PLAYER_R + 13) { lose(); return; }
+
+    elapsed = (performance.now() - startTime) / 1000;
+    updateTime();
+  }
+
+  // ---------------------------------------------------------------- Render
+  function draw() {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    // Cámara centrada en el jugador
+    const camX = player.x - VIEW_W / 2;
+    const camY = player.y - VIEW_H / 2;
+
+    ctx.save();
+    ctx.translate(-camX, -camY);
+
+    // Rango de celdas visibles
+    const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
+    const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
+    const x1 = Math.min(COLS, Math.ceil((camX + VIEW_W) / TILE) + 1);
+    const y1 = Math.min(ROWS, Math.ceil((camY + VIEW_H) / TILE) + 1);
+
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const px = x * TILE, py = y * TILE;
+        if (grid[y][x] === 1) {
+          ctx.fillStyle = "#14161c";
+          ctx.fillRect(px, py, TILE, TILE);
+          ctx.strokeStyle = "#0a0b0f";
+          ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        } else {
+          ctx.fillStyle = "#2b2622";
+          ctx.fillRect(px, py, TILE, TILE);
+          // baldosas tenues
+          ctx.strokeStyle = "rgba(0,0,0,0.25)";
+          ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        }
+      }
+    }
+
+    // Puerta
+    const open = collected >= KEY_COUNT;
+    ctx.fillStyle = open ? "#2f7d32" : "#5a3a1a";
+    ctx.fillRect(door.x - 16, door.y - 20, 32, 40);
+    ctx.fillStyle = open ? "#58c75c" : "#7a4a1f";
+    ctx.fillRect(door.x - 13, door.y - 17, 26, 34);
+    ctx.fillStyle = open ? "#d6ffd6" : "#caa15a";
+    ctx.beginPath(); ctx.arc(door.x + 7, door.y, 2.5, 0, 7); ctx.fill();
+    if (open) {
+      ctx.strokeStyle = "rgba(90,220,90,0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(door.x - 18, door.y - 22, 36, 44);
+      ctx.lineWidth = 1;
+    }
+
+    // Llaves (brillo pulsante)
+    const t = performance.now() / 500;
+    for (const k of keys) {
+      if (k.taken) continue;
+      const g = 0.6 + Math.sin(t + k.x) * 0.4;
+      ctx.save();
+      ctx.shadowColor = "rgba(255,207,77," + g + ")";
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = "#ffcf4d";
+      // cuerpo de la llave
+      ctx.beginPath(); ctx.arc(k.x - 4, k.y, 5, 0, 7); ctx.fill();
+      ctx.fillRect(k.x - 1, k.y - 1.5, 11, 3);
+      ctx.fillRect(k.x + 7, k.y - 1.5, 2.5, 5);
+      ctx.fillRect(k.x + 4, k.y - 1.5, 2.5, 4);
+      ctx.restore();
+    }
+
+    // Enemigo
+    drawEnemy(enemy.x, enemy.y, t);
+
+    // Jugador
+    ctx.fillStyle = "#cfd3da";
+    ctx.beginPath(); ctx.arc(player.x, player.y, PLAYER_R, 0, 7); ctx.fill();
+    ctx.fillStyle = "#1a1c22";
+    ctx.beginPath(); ctx.arc(player.x, player.y, PLAYER_R - 4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#cfd3da";
+    ctx.beginPath(); ctx.arc(player.x, player.y, 3, 0, 7); ctx.fill();
+
+    ctx.restore();
+
+    // --- Oscuridad / linterna ---
+    const cx = player.x - camX, cy = player.y - camY;
+    const flick = 1 + Math.sin(performance.now() / 70) * 0.04 + (Math.random() - 0.5) * 0.03;
+    const r = VISION * flick * (1 - fearPulse * 0.22); // el miedo cierra la visión
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.25, cx, cy, r);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.7, "rgba(0,0,0,0.35)");
+    grad.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    // Viñeta roja cuando el monstruo está cerca
+    if (fearPulse > 0.05) {
+      const vg = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, Math.max(VIEW_W, VIEW_H) * 0.7);
+      vg.addColorStop(0, "rgba(0,0,0,0)");
+      vg.addColorStop(1, "rgba(120,0,0," + (fearPulse * 0.5).toFixed(3) + ")");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+  }
+
+  function drawEnemy(x, y, t) {
+    const wob = Math.sin(t * 1.5) * 2;
+    ctx.save();
+    ctx.shadowColor = "rgba(150,0,0,0.6)";
+    ctx.shadowBlur = 18;
+    // cuerpo sombrío
+    ctx.fillStyle = "#1b0d12";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 2, 13, 15 + wob, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#2a1016";
+    ctx.beginPath();
+    ctx.ellipse(x, y - 4, 10, 11, 0, 0, 7);
+    ctx.fill();
+    ctx.restore();
+    // ojos rojos
+    ctx.fillStyle = "#ff2a2a";
+    ctx.shadowColor = "#ff0000"; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(x - 4, y - 5, 2.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 4, y - 5, 2.2, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // ---------------------------------------------------------------- HUD / pantallas
+  const elKeyCount = document.getElementById("keyCount");
+  const elTime = document.getElementById("time");
+  const elMsg = document.getElementById("msg");
+  let msgTimer = null;
+  function updateHud() { elKeyCount.textContent = collected; }
+  function updateTime() {
+    const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
+    elTime.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  }
+  function flashMsg(txt) {
+    elMsg.textContent = txt;
+    elMsg.classList.add("show");
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1800);
+  }
+
+  const startScreen = document.getElementById("startScreen");
+  const overScreen = document.getElementById("overScreen");
+  const winScreen = document.getElementById("winScreen");
+
+  function startGame() {
+    initAudio();
+    if (actx && actx.state === "suspended") actx.resume();
+    startScreen.classList.add("hidden");
+    overScreen.classList.add("hidden");
+    winScreen.classList.add("hidden");
+    setup();
+    running = true;
+    last = performance.now();
+    if (!heartTimer) heartbeat();
+  }
+
+  function lose() {
+    running = false;
+    fearPulse = 1;
+    beep(70, 0.6, "sawtooth", 0.3);
+    setTimeout(() => beep(48, 0.9, "sawtooth", 0.3), 120);
+    document.getElementById("overText").textContent =
+      "Reuniste " + collected + " de " + KEY_COUNT + " llaves antes de que te alcanzara.";
+    overScreen.classList.remove("hidden");
+  }
+
+  function win() {
+    running = false;
+    const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
+    beep(660, 0.15, "triangle", 0.25);
+    setTimeout(() => beep(880, 0.15, "triangle", 0.25), 140);
+    setTimeout(() => beep(1180, 0.3, "triangle", 0.25), 300);
+    document.getElementById("winText").textContent =
+      "Cruzaste la puerta con las 5 llaves en " +
+      String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0") + ". Por ahora, estás a salvo.";
+    winScreen.classList.remove("hidden");
+  }
+
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("retryBtn").addEventListener("click", startGame);
+  document.getElementById("againBtn").addEventListener("click", startGame);
+
+  // ---------------------------------------------------------------- Loop
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(3, (now - last) / 16.666); // normalizado a ~60fps
+    last = now;
+    if (running) update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  // Dibuja un fondo tenue bajo la pantalla de inicio
+  setup();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
