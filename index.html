@@ -96,6 +96,11 @@
     background: rgba(90,110,130,.18); border: 1px solid rgba(160,190,220,.4); color: #cfe;
     font-size: 13px; letter-spacing: 1px; pointer-events: auto; touch-action: none;
   }
+  #lightBtn {
+    position: absolute; bottom: 156px; right: 52px; width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(200,180,90,.16); border: 1px solid rgba(230,210,120,.45); color: #ffe9a8;
+    font-size: 12px; letter-spacing: 1px; pointer-events: auto; touch-action: none;
+  }
 </style>
 </head>
 <body>
@@ -116,6 +121,7 @@
 
   <div id="touch">
     <div id="stick"><div id="nub"></div></div>
+    <button id="lightBtn">LUZ</button>
     <button id="actionBtn">ACCIÓN</button>
   </div>
 
@@ -128,8 +134,8 @@
        Algo más deambula aquí dentro. Si te acercas, te perseguirá.</p>
     <div class="controls">
       <kbd>W A S D</kbd> / flechas — moverte &nbsp;·&nbsp; la linterna apunta hacia donde caminas<br>
-      <kbd>E</kbd> — esconderte en un armario &nbsp;·&nbsp; recoge <span class="hi">pilas</span> para la linterna<br>
-      cuidado con las <span class="hi">trampas</span> en el suelo
+      <kbd>F</kbd> — encender / apagar linterna &nbsp;·&nbsp; <kbd>E</kbd> — esconderte en un armario<br>
+      recoge <span class="hi">pilas</span> para la linterna &nbsp;·&nbsp; cuidado con las <span class="hi">trampas</span>
     </div>
     <button id="startBtn">Entrar</button>
     <div class="hint" id="startHint">Sonido recomendado 🎧</div>
@@ -243,7 +249,7 @@
   }
 
   // ---------------------------------------------------------------- Estado
-  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0 };
+  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0 };
   let keys = [], batteries = [], notes = [], traps = [], lockers = [];
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
@@ -276,7 +282,7 @@
     generateMaze();
     const p = cellCenter(1, 1);
     player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0;
-    player.face = Math.PI / 4; player.battery = 100; player.hidden = false; player.stunUntil = 0;
+    player.face = Math.PI / 4; player.battery = 100; player.hidden = false; player.stunUntil = 0; player.light = true;
 
     const startDist = bfsFrom(1, 1);
     const cells = floorCells().filter(([x, y]) => startDist[y][x] >= 0);
@@ -316,6 +322,7 @@
   addEventListener("keydown", e => {
     if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = true; e.preventDefault(); }
     if ((e.code === "KeyE" || e.code === "Space") && running) { interact(); e.preventDefault(); }
+    if (e.code === "KeyF" && running) { toggleLight(); e.preventDefault(); }
   });
   addEventListener("keyup", e => { if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = false; e.preventDefault(); } });
 
@@ -341,11 +348,19 @@
   addEventListener("mouseup", stickEnd);
   document.getElementById("actionBtn").addEventListener("touchstart", e => { e.preventDefault(); if (running) interact(); });
   document.getElementById("actionBtn").addEventListener("mousedown", e => { e.preventDefault(); if (running) interact(); });
+  document.getElementById("lightBtn").addEventListener("touchstart", e => { e.preventDefault(); if (running) toggleLight(); });
+  document.getElementById("lightBtn").addEventListener("mousedown", e => { e.preventDefault(); if (running) toggleLight(); });
   if ("ontouchstart" in window) {
     document.getElementById("touch").style.display = "block";
     document.getElementById("startHint").textContent = "Joystick para moverte · botón para esconderte · Sonido 🎧";
   }
 
+  function toggleLight() {
+    player.light = !player.light;
+    beep(player.light ? 320 : 150, 0.06, "square", 0.12);
+    flashMsg(player.light ? "Linterna encendida" : "Linterna apagada (minimapa oculto)");
+    updateBatt();
+  }
   function interact() {
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
     if (nearLocker) {
@@ -438,8 +453,8 @@
       tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
     } else { player.vx = 0; player.vy = 0; }
 
-    // --- Linterna / batería ---
-    if (!player.hidden && player.battery > 0) player.battery = Math.max(0, player.battery - BATT_DRAIN * dtSec);
+    // --- Linterna / batería (solo se gasta encendida) ---
+    if (player.light && !player.hidden && player.battery > 0) player.battery = Math.max(0, player.battery - BATT_DRAIN * dtSec);
     updateBatt();
 
     // --- Armarios cercanos ---
@@ -570,7 +585,7 @@
       gr.addColorStop(0.65, "rgba(230,224,210,0.6)");
       gr.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = gr; mctx.beginPath(); mctx.arc(cx, cy, hideVision, 0, 7); mctx.fill();
-    } else if (coneVision > 1) {
+    } else if (player.light && coneVision > 1) {
       // Cono de linterna (cálido) hacia el frente
       mctx.save();
       mctx.beginPath(); mctx.moveTo(cx, cy);
@@ -599,7 +614,10 @@
       ctx.textAlign = "left";
     }
 
-    drawMinimap();
+    // Minimapa solo con la linterna encendida; el reloj siempre
+    const _pad = 10, _h = ROWS * 4;
+    if (player.light) { drawMinimap(); drawClock(_pad + _h + 6); }
+    else drawClock(_pad);
   }
 
   function drawPlayer() {
@@ -728,15 +746,17 @@
     const pgx = Math.floor(player.x / TILE), pgy = Math.floor(player.y / TILE);
     ctx.fillStyle = "#eef"; ctx.fillRect(ox + pgx * s, oy + pgy * s, s, s);
     ctx.restore();
-
-    // reloj debajo del minimapa
+  }
+  // Reloj (independiente del minimapa), alineado a la derecha en la y indicada
+  function drawClock(topY) {
+    const s = 4, pad = 10, w = COLS * s, ox = VIEW_W - w - pad;
     const mm = Math.floor(elapsed / 60), ss = Math.floor(elapsed % 60);
     const tstr = String(mm).padStart(2, "0") + ":" + String(ss).padStart(2, "0");
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ox - 4, oy + h + 6, w + 8, 22);
+    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ox - 4, topY, w + 8, 22);
     ctx.fillStyle = "#cfd3da"; ctx.font = "16px Courier New";
     ctx.textAlign = "center"; ctx.textBaseline = "top";
-    ctx.fillText(tstr, ox + w / 2, oy + h + 9);
+    ctx.fillText(tstr, ox + w / 2, topY + 3);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.restore();
   }
@@ -753,7 +773,8 @@
   function updateBatt() {
     const b = Math.max(0, player.battery);
     elBatt.style.width = b + "%";
-    elBatt.style.background = b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)";
+    elBatt.style.background = !player.light ? "#3a4048"
+      : b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)";
   }
   function updateTime() {
     const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
