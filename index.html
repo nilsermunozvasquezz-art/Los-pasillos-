@@ -34,7 +34,7 @@
   #notesHud { font-size: 12px; color: #8a7fb0; }
   #msg { color: #d14b4b; font-size: 13px; opacity: 0; transition: opacity .25s; text-align: center; flex: 1; }
   #msg.show { opacity: 1; }
-  #time { font-size: 15px; }
+  #time { display: none; }  /* el reloj se dibuja en el canvas, bajo el minimapa */
 
   /* Nota con historia */
   #note {
@@ -553,7 +553,7 @@
     const cx = player.x - camX, cy = player.y - camY;
     const flick = 1 + Math.sin(performance.now() / 70) * 0.05 + (Math.random() - 0.5) * 0.05;
     const battN = player.battery / 100;
-    const coneVision = BASE_VISION * flick * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
+    const coneVision = BASE_VISION * 1.22 * flick * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18); // 1.22 = alcance un poco más largo hacia adelante
     const hideVision = BASE_VISION * 0.82 * flick;   // luz en círculo dentro del armario
 
     mctx.globalCompositeOperation = "source-over";
@@ -698,7 +698,7 @@
   function drawMinimap() {
     const s = 4, pad = 10;
     const w = COLS * s, h = ROWS * s;
-    const ox = VIEW_W - w - pad, oy = VIEW_H - h - pad;
+    const ox = VIEW_W - w - pad, oy = pad;   // esquina superior derecha
     ctx.save();
     ctx.globalAlpha = 0.9;
     ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(ox - 4, oy - 4, w + 8, h + 8);
@@ -727,6 +727,17 @@
     // jugador
     const pgx = Math.floor(player.x / TILE), pgy = Math.floor(player.y / TILE);
     ctx.fillStyle = "#eef"; ctx.fillRect(ox + pgx * s, oy + pgy * s, s, s);
+    ctx.restore();
+
+    // reloj debajo del minimapa
+    const mm = Math.floor(elapsed / 60), ss = Math.floor(elapsed % 60);
+    const tstr = String(mm).padStart(2, "0") + ":" + String(ss).padStart(2, "0");
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(ox - 4, oy + h + 6, w + 8, 22);
+    ctx.fillStyle = "#cfd3da"; ctx.font = "16px Courier New";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(tstr, ox + w / 2, oy + h + 9);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     ctx.restore();
   }
 
