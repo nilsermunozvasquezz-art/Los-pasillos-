@@ -16,117 +16,85 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-  #wrap {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-  }
-  canvas {
-    display: block;
-    background: #000;
-    image-rendering: pixelated;
-    max-width: 100%;
-    max-height: 100%;
-    touch-action: none;
-  }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+  canvas { display: block; background: #000; max-width: 100%; max-height: 100%; touch-action: none; }
 
   /* --- HUD --- */
   #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 16px;
-    font-size: 15px;
-    letter-spacing: 1px;
-    text-shadow: 0 0 6px rgba(0,0,0,0.9);
-    pointer-events: none;
-    z-index: 5;
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; font-size: 15px; letter-spacing: 1px;
+    text-shadow: 0 0 6px rgba(0,0,0,0.95); pointer-events: none; z-index: 5; gap: 12px;
   }
+  #hudLeft { display: flex; flex-direction: column; gap: 6px; }
   #keys b { color: #ffcf4d; }
-  #msg {
-    color: #d14b4b;
-    font-size: 13px;
-    opacity: 0;
-    transition: opacity .25s;
-  }
+  #battWrap { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #9fb7c9; }
+  #battBar { width: 92px; height: 9px; border: 1px solid #4a5560; background: #0c0f12; position: relative; }
+  #battFill { position: absolute; inset: 1px; width: 100%; background: linear-gradient(90deg,#3fae5a,#8fe08a); transition: width .2s, background .3s; }
+  #notesHud { font-size: 12px; color: #8a7fb0; }
+  #msg { color: #d14b4b; font-size: 13px; opacity: 0; transition: opacity .25s; text-align: center; flex: 1; }
   #msg.show { opacity: 1; }
+  #time { font-size: 15px; }
+
+  /* Nota con historia */
+  #note {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    max-width: min(560px, 90vw); background: rgba(14,10,8,.94); border: 1px solid #5a4a30;
+    border-left: 3px solid #b8923f; padding: 16px 20px; z-index: 7;
+    color: #d8c7a0; font-size: 14px; line-height: 1.6; letter-spacing: .3px;
+    opacity: 0; pointer-events: none; transition: opacity .4s, transform .4s;
+    box-shadow: 0 0 30px rgba(0,0,0,.8);
+  }
+  #note.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #note .q { color: #7a6a4a; font-style: italic; }
+
+  /* Prompt de acción */
+  #prompt {
+    position: fixed; left: 50%; top: 58%; transform: translateX(-50%);
+    background: rgba(0,0,0,.6); border: 1px solid #556; padding: 6px 14px; border-radius: 3px;
+    font-size: 13px; letter-spacing: 1px; color: #cfe; z-index: 6; opacity: 0; transition: opacity .15s; pointer-events: none;
+  }
+  #prompt.show { opacity: 1; }
+  #prompt b { color: #ffd166; }
 
   /* --- Overlays --- */
   .screen {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 24px;
-    background: radial-gradient(ellipse at center, rgba(20,0,0,.6), rgba(0,0,0,.97));
-    z-index: 10;
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 24px;
+    background: radial-gradient(ellipse at center, rgba(20,0,0,.6), rgba(0,0,0,.97)); z-index: 10;
   }
   .screen.hidden { display: none; }
   .screen h1 {
-    font-size: clamp(32px, 9vw, 72px);
-    letter-spacing: 6px;
-    color: #b11;
-    text-shadow: 0 0 20px rgba(180,0,0,.7), 0 0 2px #000;
-    margin-bottom: 10px;
+    font-size: clamp(32px, 9vw, 72px); letter-spacing: 6px; color: #b11;
+    text-shadow: 0 0 20px rgba(180,0,0,.7), 0 0 2px #000; margin-bottom: 10px;
   }
   .screen h1.win { color: #6ad46a; text-shadow: 0 0 20px rgba(60,200,60,.6); }
-  .screen p { max-width: 460px; line-height: 1.7; font-size: 15px; color: #9a9a9a; margin-bottom: 26px; }
+  .screen p { max-width: 500px; line-height: 1.75; font-size: 15px; color: #9a9a9a; margin-bottom: 24px; }
   .screen p .hi { color: #ffcf4d; }
+  .controls { font-size: 13px; color: #778; margin-bottom: 24px; line-height: 2; }
+  .controls kbd { background:#1b1f26; border:1px solid #39404a; border-radius:3px; padding:1px 7px; color:#cfe; }
   button {
-    font-family: inherit;
-    font-size: 17px;
-    letter-spacing: 3px;
-    padding: 14px 34px;
-    background: transparent;
-    color: #ddd;
-    border: 1px solid #b11;
-    cursor: pointer;
-    transition: all .18s;
-    text-transform: uppercase;
+    font-family: inherit; font-size: 17px; letter-spacing: 3px; padding: 14px 34px;
+    background: transparent; color: #ddd; border: 1px solid #b11; cursor: pointer;
+    transition: all .18s; text-transform: uppercase;
   }
   button:hover { background: #b11; color: #fff; box-shadow: 0 0 22px rgba(180,0,0,.6); }
   .hint { margin-top: 22px; font-size: 12px; color: #555; letter-spacing: 1px; }
   .flicker { animation: flick 5s infinite; }
-  @keyframes flick {
-    0%,19%,21%,80%,100% { opacity: 1; }
-    20% { opacity: .35; }
-    82% { opacity: .55; }
-  }
+  @keyframes flick { 0%,19%,21%,80%,100%{opacity:1;} 20%{opacity:.35;} 82%{opacity:.55;} }
 
   /* --- Touch controls --- */
-  #touch {
-    position: fixed;
-    inset: 0;
-    z-index: 6;
-    pointer-events: none;
-    display: none;
-  }
+  #touch { position: fixed; inset: 0; z-index: 6; pointer-events: none; display: none; }
   #stick {
-    position: absolute;
-    bottom: 32px; left: 32px;
-    width: 128px; height: 128px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.15);
-    pointer-events: auto;
-    touch-action: none;
+    position: absolute; bottom: 32px; left: 32px; width: 128px; height: 128px; border-radius: 50%;
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15); pointer-events: auto; touch-action: none;
   }
-  #nub {
-    position: absolute;
-    top: 50%; left: 50%;
-    width: 52px; height: 52px;
-    margin: -26px 0 0 -26px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.18);
-    border: 1px solid rgba(255,255,255,.3);
+  #nub { position: absolute; top: 50%; left: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
+    border-radius: 50%; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); }
+  #actionBtn {
+    position: absolute; bottom: 48px; right: 36px; width: 92px; height: 92px; border-radius: 50%;
+    background: rgba(90,110,130,.18); border: 1px solid rgba(160,190,220,.4); color: #cfe;
+    font-size: 13px; letter-spacing: 1px; pointer-events: auto; touch-action: none;
   }
 </style>
 </head>
@@ -134,13 +102,21 @@
   <div id="wrap"><canvas id="game"></canvas></div>
 
   <div id="hud">
-    <div id="keys">LLAVES: <b><span id="keyCount">0</span>/5</b></div>
+    <div id="hudLeft">
+      <div id="keys">LLAVES: <b><span id="keyCount">0</span>/5</b></div>
+      <div id="battWrap">LINTERNA <div id="battBar"><div id="battFill"></div></div></div>
+      <div id="notesHud">NOTAS: <span id="noteCount">0</span></div>
+    </div>
     <div id="msg"></div>
     <div id="time">00:00</div>
   </div>
 
+  <div id="prompt"><b>E</b> esconderte</div>
+  <div id="note"></div>
+
   <div id="touch">
     <div id="stick"><div id="nub"></div></div>
+    <button id="actionBtn">ACCIÓN</button>
   </div>
 
   <!-- Start -->
@@ -149,9 +125,14 @@
     <p>Despiertas en un complejo a oscuras. La única salida está cerrada.
        Encuentra las <span class="hi">5 llaves</span> ocultas en los pasillos
        y llega a la <span class="hi">puerta</span> para escapar.<br><br>
-       Algo más deambula aquí dentro. No dejes que te alcance.</p>
+       Algo más deambula aquí dentro. Si te acercas, te perseguirá.</p>
+    <div class="controls">
+      <kbd>W A S D</kbd> / flechas — moverte &nbsp;·&nbsp; la linterna apunta hacia donde caminas<br>
+      <kbd>E</kbd> — esconderte en un armario &nbsp;·&nbsp; recoge <span class="hi">pilas</span> para la linterna<br>
+      cuidado con las <span class="hi">trampas</span> en el suelo
+    </div>
     <button id="startBtn">Entrar</button>
-    <div class="hint" id="startHint">WASD / Flechas para moverte · Sonido recomendado</div>
+    <div class="hint" id="startHint">Sonido recomendado 🎧</div>
   </div>
 
   <!-- Game over -->
@@ -172,60 +153,56 @@
 "use strict";
 (() => {
   // ---------------------------------------------------------------- Config
-  const TILE = 48;            // tamaño de celda en px (mundo)
-  const COLS = 21;           // dimensiones del laberinto (impares)
-  const ROWS = 21;
-  const PLAYER_R = 11;
-  const PLAYER_SPEED = 2.6;
-  const ENEMY_SPEED = 1.7;
-  const ENEMY_CHASE_SPEED = 2.35;
-  const VISION = 150;        // radio de la linterna en px
-  const KEY_COUNT = 5;
-  const ENEMY_SIGHT = 240;   // a qué distancia el monstruo te detecta
+  const TILE = 48, COLS = 21, ROWS = 21;
+  const PLAYER_R = 11, PLAYER_SPEED = 2.6;
+  const ENEMY_SPEED = 1.7, ENEMY_CHASE_SPEED = 2.35;
+  const BASE_VISION = 170, CONE_HALF = Math.PI * (120 / 2) / 180; // 120° total
+  const AMBIENT_R = 42;                 // halo tenue alrededor del jugador
+  const KEY_COUNT = 5, ENEMY_SIGHT = 240;
+  const N_BATTERIES = 4, N_NOTES = 3, N_TRAPS = 5, N_LOCKERS = 4;
+  const BATT_DRAIN = 2.0;               // % por segundo
+  const NOTE_TEXTS = [
+    "Día 3. Cambiaron las cerraduras. Cinco llaves ahora, repartidas por los pasillos. <span class='q'>¿Por qué cinco?</span>",
+    "No enciendan la linterna cuando <span class='q'>lo</span> oigan cerca. La luz lo atrae. Escóndanse y aguanten la respiración.",
+    "Si están leyendo esto, ya es tarde para mí. Las pilas se acaban rápido. Busquen más. No se queden a oscuras.",
+    "Las trampas del suelo las pusimos nosotros, para él. Hacen ruido. Esquívenlas o <span class='q'>lo</span> llamarán.",
+    "La puerta del fondo da a la superficie. Solo se abre con las cinco. Corran y no miren atrás."
+  ];
 
   // ---------------------------------------------------------------- Canvas
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
+  const mask = document.createElement("canvas");
+  const mctx = mask.getContext("2d");
   let VIEW_W = 760, VIEW_H = 540;
-
   function resize() {
     VIEW_W = Math.min(window.innerWidth, 920);
     VIEW_H = Math.min(window.innerHeight, 680);
-    canvas.width = VIEW_W;
-    canvas.height = VIEW_H;
+    canvas.width = VIEW_W; canvas.height = VIEW_H;
+    mask.width = VIEW_W; mask.height = VIEW_H;
   }
   window.addEventListener("resize", resize);
   resize();
 
   // ---------------------------------------------------------------- Maze
-  // grid[y][x]: 1 = pared, 0 = pasillo
   let grid = [];
-
   function generateMaze() {
     grid = Array.from({ length: ROWS }, () => Array(COLS).fill(1));
-    // Recursive backtracker sobre celdas impares
-    const stack = [[1, 1]];
-    grid[1][1] = 0;
+    const stack = [[1, 1]]; grid[1][1] = 0;
     const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
     while (stack.length) {
       const [cx, cy] = stack[stack.length - 1];
       const options = [];
       for (const [dx, dy] of dirs) {
         const nx = cx + dx, ny = cy + dy;
-        if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && grid[ny][nx] === 1) {
+        if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && grid[ny][nx] === 1)
           options.push([nx, ny, dx, dy]);
-        }
       }
       if (options.length) {
         const [nx, ny, dx, dy] = options[(Math.random() * options.length) | 0];
-        grid[cy + dy / 2][cx + dx / 2] = 0;
-        grid[ny][nx] = 0;
-        stack.push([nx, ny]);
-      } else {
-        stack.pop();
-      }
+        grid[cy + dy / 2][cx + dx / 2] = 0; grid[ny][nx] = 0; stack.push([nx, ny]);
+      } else stack.pop();
     }
-    // Abrir algunas paredes extra para crear bucles (menos callejones = más tensión)
     for (let i = 0; i < 24; i++) {
       const x = 1 + 2 * ((Math.random() * ((COLS - 1) / 2)) | 0);
       const y = 1 + 2 * ((Math.random() * ((ROWS - 1) / 2)) | 0);
@@ -234,174 +211,159 @@
       if (wx > 0 && wx < COLS - 1 && wy > 0 && wy < ROWS - 1) grid[wy][wx] = 0;
     }
   }
-
   function isWall(px, py) {
     const gx = Math.floor(px / TILE), gy = Math.floor(py / TILE);
     if (gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS) return true;
     return grid[gy][gx] === 1;
   }
-
-  // Lista de celdas de pasillo
   function floorCells() {
-    const cells = [];
-    for (let y = 1; y < ROWS - 1; y++)
-      for (let x = 1; x < COLS - 1; x++)
-        if (grid[y][x] === 0) cells.push([x, y]);
-    return cells;
+    const c = [];
+    for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) if (grid[y][x] === 0) c.push([x, y]);
+    return c;
   }
-
-  // Distancia BFS (en celdas) desde una celda a todas las demás
   function bfsFrom(sx, sy) {
     const dist = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
-    dist[sy][sx] = 0;
-    const q = [[sx, sy]];
-    let head = 0;
-    while (head < q.length) {
-      const [x, y] = q[head++];
+    dist[sy][sx] = 0; const q = [[sx, sy]]; let h = 0;
+    while (h < q.length) {
+      const [x, y] = q[h++];
       for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
         const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS &&
-            grid[ny][nx] === 0 && dist[ny][nx] === -1) {
-          dist[ny][nx] = dist[y][x] + 1;
-          q.push([nx, ny]);
+        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && dist[ny][nx] === -1) {
+          dist[ny][nx] = dist[y][x] + 1; q.push([nx, ny]);
         }
       }
     }
     return dist;
   }
+  // hash determinista para texturas
+  function hash(x, y) {
+    let h = (x * 374761393 + y * 668265263) | 0;
+    h = (h ^ (h >> 13)) * 1274126177 | 0;
+    return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+  }
 
   // ---------------------------------------------------------------- Estado
-  const player = { x: 0, y: 0, dx: 0, dy: 0 };
-  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false };
-  let keys = [];            // {x,y,taken}
+  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0 };
+  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0 };
+  let keys = [], batteries = [], notes = [], traps = [], lockers = [];
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
-  let collected = 0;
-  let running = false;
-  let startTime = 0, elapsed = 0;
-  let fearPulse = 0;        // 0..1 intensidad del "miedo" (cercanía monstruo)
+  let collected = 0, notesFound = 0;
+  let running = false, startTime = 0, elapsed = 0, fearPulse = 0;
+  let nearLocker = null;
 
   function cellCenter(cx, cy) { return { x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2 }; }
+  function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+
+  function pickSpread(cands, n, minSep, used) {
+    const out = [];
+    for (const c of cands) {
+      if (out.length >= n) break;
+      const key = c[0] + "," + c[1];
+      if (used.has(key)) continue;
+      if (out.every(k => Math.abs(k[0] - c[0]) + Math.abs(k[1] - c[1]) >= minSep)) out.push(c);
+    }
+    for (const c of cands) { // relleno si faltan
+      if (out.length >= n) break;
+      const key = c[0] + "," + c[1];
+      if (used.has(key) || out.some(k => k[0] === c[0] && k[1] === c[1])) continue;
+      out.push(c);
+    }
+    for (const c of out) used.add(c[0] + "," + c[1]);
+    return out;
+  }
 
   function setup() {
     generateMaze();
-
-    // Jugador arriba-izquierda
     const p = cellCenter(1, 1);
-    player.x = p.x; player.y = p.y; player.dx = 0; player.dy = 0;
+    player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0;
+    player.face = Math.PI / 4; player.battery = 100; player.hidden = false; player.stunUntil = 0;
 
     const startDist = bfsFrom(1, 1);
     const cells = floorCells().filter(([x, y]) => startDist[y][x] >= 0);
 
-    // Puerta: la celda más lejana del inicio
+    // Puerta = celda más lejana
     let far = cells[0], farD = -1;
-    for (const [x, y] of cells) {
-      if (startDist[y][x] > farD) { farD = startDist[y][x]; far = [x, y]; }
-    }
+    for (const [x, y] of cells) if (startDist[y][x] > farD) { farD = startDist[y][x]; far = [x, y]; }
     door.gx = far[0]; door.gy = far[1];
-    const dc = cellCenter(door.gx, door.gy);
-    door.x = dc.x; door.y = dc.y;
+    const dc = cellCenter(door.gx, door.gy); door.x = dc.x; door.y = dc.y;
 
-    // Llaves: celdas bien repartidas y lejanas (preferimos callejones)
-    keys = [];
-    const candidates = cells
-      .filter(([x, y]) => startDist[y][x] > 4 && !(x === door.gx && y === door.gy))
-      .sort((a, b) => startDist[b[1]][b[0]] - startDist[a[1]][a[0]]);
+    const used = new Set(["1,1", door.gx + "," + door.gy]);
+    const farOrder = cells.filter(([x, y]) => startDist[y][x] > 3)
+                          .sort((a, b) => startDist[b[1]][b[0]] - startDist[a[1]][a[0]]);
+    const nearOrder = cells.filter(([x, y]) => startDist[y][x] > 2).slice();
+    shuffle(nearOrder);
 
-    const chosen = [];
-    const minSep = 4; // separación mínima en celdas
-    for (const c of candidates) {
-      if (chosen.length >= KEY_COUNT) break;
-      if (chosen.every(k => Math.abs(k[0] - c[0]) + Math.abs(k[1] - c[1]) >= minSep)) {
-        chosen.push(c);
-      }
-    }
-    // Relleno por si no alcanzan con la separación
-    for (const c of candidates) {
-      if (chosen.length >= KEY_COUNT) break;
-      if (!chosen.some(k => k[0] === c[0] && k[1] === c[1])) chosen.push(c);
-    }
-    for (const [x, y] of chosen) {
-      const kc = cellCenter(x, y);
-      keys.push({ x: kc.x, y: kc.y, taken: false });
-    }
+    keys = pickSpread(farOrder, KEY_COUNT, 4, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, taken: false }; });
+    batteries = pickSpread(nearOrder, N_BATTERIES, 3, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, taken: false }; });
+    notes = pickSpread(nearOrder, N_NOTES, 3, used).map(([x, y], i) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, taken: false, text: NOTE_TEXTS[i % NOTE_TEXTS.length] }; });
+    lockers = pickSpread(nearOrder, N_LOCKERS, 4, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, gx: x, gy: y }; });
+    traps = pickSpread(nearOrder, N_TRAPS, 2, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, triggered: false }; });
 
-    // Enemigo: lejos del jugador
+    // Enemigo lejos del jugador
     let estart = cells[(cells.length * 0.6) | 0];
-    for (const [x, y] of cells) {
-      if (startDist[y][x] > ROWS * 0.6) { estart = [x, y]; break; }
-    }
+    for (const [x, y] of cells) if (startDist[y][x] > ROWS * 0.6) { estart = [x, y]; break; }
     const ec = cellCenter(estart[0], estart[1]);
-    enemy.x = ec.x; enemy.y = ec.y; enemy.path = []; enemy.repathT = 0; enemy.chasing = false;
+    enemy.x = ec.x; enemy.y = ec.y; enemy.path = []; enemy.repathT = 0; enemy.chasing = false; enemy.alertUntil = 0;
 
-    collected = 0;
-    updateHud();
-    fearPulse = 0;
-    startTime = performance.now();
-    elapsed = 0;
+    collected = 0; notesFound = 0; nearLocker = null; fearPulse = 0;
+    updateHud(); startTime = performance.now(); elapsed = 0;
   }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]]; } }
 
   // ---------------------------------------------------------------- Input
   const pressed = {};
-  const KEYMAP = {
-    ArrowUp: "up", KeyW: "up",
-    ArrowDown: "down", KeyS: "down",
-    ArrowLeft: "left", KeyA: "left",
-    ArrowRight: "right", KeyD: "right",
-  };
+  const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
   addEventListener("keydown", e => {
     if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = true; e.preventDefault(); }
+    if ((e.code === "KeyE" || e.code === "Space") && running) { interact(); e.preventDefault(); }
   });
-  addEventListener("keyup", e => {
-    if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = false; e.preventDefault(); }
-  });
+  addEventListener("keyup", e => { if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = false; e.preventDefault(); } });
 
-  // Joystick táctil
   const touch = { active: false, dx: 0, dy: 0 };
-  const stick = document.getElementById("stick");
-  const nub = document.getElementById("nub");
+  const stick = document.getElementById("stick"), nub = document.getElementById("nub");
   function stickStart(e) { touch.active = true; stickMove(e); }
   function stickMove(e) {
-    if (!touch.active) return;
-    e.preventDefault();
-    const t = e.touches ? e.touches[0] : e;
-    const r = stick.getBoundingClientRect();
-    let dx = t.clientX - (r.left + r.width / 2);
-    let dy = t.clientY - (r.top + r.height / 2);
-    const max = r.width / 2;
-    const mag = Math.hypot(dx, dy);
+    if (!touch.active) return; e.preventDefault();
+    const t = e.touches ? e.touches[0] : e, r = stick.getBoundingClientRect();
+    let dx = t.clientX - (r.left + r.width / 2), dy = t.clientY - (r.top + r.height / 2);
+    const max = r.width / 2, mag = Math.hypot(dx, dy);
     if (mag > max) { dx = dx / mag * max; dy = dy / mag * max; }
     nub.style.transform = `translate(${dx}px, ${dy}px)`;
     const dead = 8;
-    touch.dx = mag > dead ? dx / max : 0;
-    touch.dy = mag > dead ? dy / max : 0;
+    touch.dx = mag > dead ? dx / max : 0; touch.dy = mag > dead ? dy / max : 0;
   }
-  function stickEnd() {
-    touch.active = false; touch.dx = 0; touch.dy = 0;
-    nub.style.transform = "translate(0,0)";
-  }
+  function stickEnd() { touch.active = false; touch.dx = 0; touch.dy = 0; nub.style.transform = "translate(0,0)"; }
   stick.addEventListener("touchstart", stickStart, { passive: false });
   stick.addEventListener("touchmove", stickMove, { passive: false });
-  stick.addEventListener("touchend", stickEnd);
-  stick.addEventListener("touchcancel", stickEnd);
+  stick.addEventListener("touchend", stickEnd); stick.addEventListener("touchcancel", stickEnd);
   stick.addEventListener("mousedown", stickStart);
   addEventListener("mousemove", e => { if (touch.active) stickMove(e); });
   addEventListener("mouseup", stickEnd);
-
+  document.getElementById("actionBtn").addEventListener("touchstart", e => { e.preventDefault(); if (running) interact(); });
+  document.getElementById("actionBtn").addEventListener("mousedown", e => { e.preventDefault(); if (running) interact(); });
   if ("ontouchstart" in window) {
     document.getElementById("touch").style.display = "block";
-    document.getElementById("startHint").textContent = "Usa el joystick para moverte · Sonido recomendado";
+    document.getElementById("startHint").textContent = "Joystick para moverte · botón para esconderte · Sonido 🎧";
   }
 
-  // ---------------------------------------------------------------- Audio (WebAudio, sin archivos)
+  function interact() {
+    if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
+    if (nearLocker) {
+      player.hidden = true;
+      player.x = nearLocker.x; player.y = nearLocker.y;
+      beep(200, 0.2, "sine", 0.12);
+      flashMsg("Te escondes… conten la respiración");
+    }
+  }
+
+  // ---------------------------------------------------------------- Audio
   let actx = null, droneGain = null, heartTimer = null;
   function initAudio() {
     if (actx) return;
     try {
       actx = new (window.AudioContext || window.webkitAudioContext)();
-      // Drone grave continuo
       const o1 = actx.createOscillator(), o2 = actx.createOscillator();
-      o1.type = "sine"; o1.frequency.value = 55;
-      o2.type = "sine"; o2.frequency.value = 58.7;
+      o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
       droneGain = actx.createGain(); droneGain.gain.value = 0.04;
       o1.connect(droneGain); o2.connect(droneGain); droneGain.connect(actx.destination);
       o1.start(); o2.start();
@@ -410,318 +372,413 @@
   function beep(freq, dur, type, vol) {
     if (!actx) return;
     const o = actx.createOscillator(), g = actx.createGain();
-    o.type = type || "square"; o.frequency.value = freq;
-    g.gain.value = 0; o.connect(g); g.connect(actx.destination);
+    o.type = type || "square"; o.frequency.value = freq; g.gain.value = 0;
+    o.connect(g); g.connect(actx.destination);
     const t = actx.currentTime;
     g.gain.linearRampToValueAtTime(vol || 0.15, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.15));
     o.start(t); o.stop(t + (dur || 0.15) + 0.02);
   }
   function heartbeat() {
-    if (!running || !actx) return;
-    const near = fearPulse; // 0..1
+    if (!running || !actx) { heartTimer = setTimeout(heartbeat, 500); return; }
+    const near = player.hidden ? fearPulse * 0.4 : fearPulse;
     if (near > 0.08) {
       beep(45, 0.12, "sine", 0.18 + near * 0.25);
       setTimeout(() => beep(38, 0.14, "sine", 0.14 + near * 0.2), 150);
     }
-    const interval = 1100 - near * 750; // más cerca = más rápido
-    heartTimer = setTimeout(heartbeat, Math.max(320, interval));
+    heartTimer = setTimeout(heartbeat, Math.max(320, 1100 - near * 750));
   }
 
   // ---------------------------------------------------------------- Update
   function tryMove(obj, nx, ny, r) {
-    // Colisión por ejes para deslizarse por paredes
     if (!isWall(nx + (obj.vx > 0 ? r : -r), obj.y) &&
         !isWall(nx + (obj.vx > 0 ? r : -r), obj.y - r + 1) &&
-        !isWall(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) {
-      obj.x = nx;
-    }
+        !isWall(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) obj.x = nx;
     if (!isWall(obj.x, ny + (obj.vy > 0 ? r : -r)) &&
         !isWall(obj.x - r + 1, ny + (obj.vy > 0 ? r : -r)) &&
-        !isWall(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) {
-      obj.y = ny;
-    }
+        !isWall(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) obj.y = ny;
   }
-
   function enemyRepath() {
     const ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE);
-    const px = Math.floor(player.x / TILE), py = Math.floor(player.y / TILE);
     let tx, ty;
-    if (enemy.chasing) { tx = px; ty = py; }
-    else {
-      // vagar: destino aleatorio en pasillo
-      const cells = floorCells();
-      const c = cells[(Math.random() * cells.length) | 0];
-      tx = c[0]; ty = c[1];
-    }
-    // BFS desde el enemigo hasta el objetivo, reconstruyendo camino
+    if (enemy.chasing || performance.now() < enemy.alertUntil) { tx = Math.floor(player.x / TILE); ty = Math.floor(player.y / TILE); }
+    else { const c = floorCells(); const d = c[(Math.random() * c.length) | 0]; tx = d[0]; ty = d[1]; }
     const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     const seen = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
-    seen[ey][ex] = true;
-    const q = [[ex, ey]]; let head = 0, found = false;
-    while (head < q.length) {
-      const [x, y] = q[head++];
+    seen[ey][ex] = true; const q = [[ex, ey]]; let h = 0, found = false;
+    while (h < q.length) {
+      const [x, y] = q[h++];
       if (x === tx && y === ty) { found = true; break; }
       for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
         const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS &&
-            grid[ny][nx] === 0 && !seen[ny][nx]) {
+        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && !seen[ny][nx]) {
           seen[ny][nx] = true; prev[ny][nx] = [x, y]; q.push([nx, ny]);
         }
       }
     }
     const path = [];
-    if (found) {
-      let cur = [tx, ty];
-      while (cur && !(cur[0] === ex && cur[1] === ey)) {
-        path.push(cellCenter(cur[0], cur[1]));
-        cur = prev[cur[1]][cur[0]];
-      }
-      path.reverse();
-    }
+    if (found) { let cur = [tx, ty]; while (cur && !(cur[0] === ex && cur[1] === ey)) { path.push(cellCenter(cur[0], cur[1])); cur = prev[cur[1]][cur[0]]; } path.reverse(); }
     enemy.path = path;
   }
 
-  function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
-
   function update(dt) {
-    // --- Jugador ---
-    let ix = (pressed.right ? 1 : 0) - (pressed.left ? 1 : 0) + touch.dx;
-    let iy = (pressed.down ? 1 : 0) - (pressed.up ? 1 : 0) + touch.dy;
-    const mag = Math.hypot(ix, iy);
-    if (mag > 1) { ix /= mag; iy /= mag; }
-    player.vx = ix; player.vy = iy;
-    const sp = PLAYER_SPEED * dt;
-    tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
+    const now = performance.now();
+    const dtSec = dt / 60;
+    const stunned = now < player.stunUntil;
 
-    // --- Llaves ---
-    for (const k of keys) {
-      if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 10) {
-        k.taken = true; collected++;
-        updateHud();
-        beep(880, 0.1, "triangle", 0.2);
-        setTimeout(() => beep(1320, 0.12, "triangle", 0.2), 90);
-        flashMsg(collected >= KEY_COUNT ? "¡Todas las llaves! Busca la puerta." : "Llave encontrada");
+    // --- Jugador ---
+    if (!player.hidden && !stunned) {
+      let ix = (pressed.right ? 1 : 0) - (pressed.left ? 1 : 0) + touch.dx;
+      let iy = (pressed.down ? 1 : 0) - (pressed.up ? 1 : 0) + touch.dy;
+      const mag = Math.hypot(ix, iy);
+      if (mag > 1) { ix /= mag; iy /= mag; }
+      player.vx = ix; player.vy = iy;
+      if (mag > 0.1) player.face = Math.atan2(iy, ix);     // la linterna sigue el frente
+      const sp = PLAYER_SPEED * dt;
+      tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
+    } else { player.vx = 0; player.vy = 0; }
+
+    // --- Linterna / batería ---
+    if (!player.hidden && player.battery > 0) player.battery = Math.max(0, player.battery - BATT_DRAIN * dtSec);
+    updateBatt();
+
+    // --- Armarios cercanos ---
+    nearLocker = null;
+    for (const L of lockers) if (dist(player.x, player.y, L.x, L.y) < 34) { nearLocker = L; break; }
+    updatePrompt();
+
+    if (!player.hidden) {
+      // --- Llaves ---
+      for (const k of keys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 10) {
+        k.taken = true; collected++; updateHud();
+        beep(880, 0.1, "triangle", 0.2); setTimeout(() => beep(1320, 0.12, "triangle", 0.2), 90);
+        flashMsg(collected >= KEY_COUNT ? "¡Las 5 llaves! Corre a la puerta." : "Llave encontrada (" + collected + "/5)");
+      }
+      // --- Pilas ---
+      for (const b of batteries) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 10) {
+        b.taken = true; player.battery = Math.min(100, player.battery + 45);
+        beep(520, 0.08, "square", 0.18); setTimeout(() => beep(760, 0.1, "square", 0.18), 70);
+        flashMsg("Pila (+linterna)"); updateBatt();
+      }
+      // --- Notas ---
+      for (const n of notes) if (!n.taken && dist(player.x, player.y, n.x, n.y) < PLAYER_R + 10) {
+        n.taken = true; notesFound++; document.getElementById("noteCount").textContent = notesFound;
+        beep(330, 0.12, "sine", 0.14); showNote(n.text);
+      }
+      // --- Trampas ---
+      for (const tr of traps) if (!tr.triggered && dist(player.x, player.y, tr.x, tr.y) < 16) {
+        tr.triggered = true; player.stunUntil = now + 900;
+        enemy.alertUntil = now + 4500; enemy.chasing = true; enemy.repathT = 0;
+        beep(140, 0.25, "sawtooth", 0.3); setTimeout(() => beep(90, 0.3, "sawtooth", 0.25), 120);
+        flashMsg("¡TRAMPA! El ruido lo atrajo");
+      }
+      // --- Puerta ---
+      if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
+        if (collected >= KEY_COUNT) { win(); return; }
+        else flashMsg("Cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s).");
       }
     }
 
-    // --- Puerta ---
-    if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
-      if (collected >= KEY_COUNT) { win(); return; }
-      else flashMsg("La puerta está cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s).");
-    }
-
     // --- Enemigo ---
-    const dToPlayer = dist(enemy.x, enemy.y, player.x, player.y);
+    const dToP = dist(enemy.x, enemy.y, player.x, player.y);
+    const alerted = now < enemy.alertUntil;
     const wasChasing = enemy.chasing;
-    enemy.chasing = dToPlayer < ENEMY_SIGHT;
+    // Oculto = invisible para el monstruo (salvo que una trampa lo tenga en alerta hacia ti)
+    enemy.chasing = (!player.hidden && dToP < ENEMY_SIGHT) || alerted;
     enemy.repathT -= dt;
     if (enemy.repathT <= 0 || (enemy.chasing && !wasChasing) || enemy.path.length === 0) {
-      enemyRepath();
-      enemy.repathT = enemy.chasing ? 24 : 70; // recalcula seguido al perseguir
+      enemyRepath(); enemy.repathT = enemy.chasing ? 24 : 70;
     }
     if (enemy.path.length) {
       const tgt = enemy.path[0];
-      const edx = tgt.x - enemy.x, edy = tgt.y - enemy.y;
-      const ed = Math.hypot(edx, edy) || 1;
+      const edx = tgt.x - enemy.x, edy = tgt.y - enemy.y, ed = Math.hypot(edx, edy) || 1;
       const esp = (enemy.chasing ? ENEMY_CHASE_SPEED : ENEMY_SPEED) * dt;
       enemy.vx = edx; enemy.vy = edy;
-      enemy.x += edx / ed * esp;
-      enemy.y += edy / ed * esp;
+      enemy.x += edx / ed * esp; enemy.y += edy / ed * esp;
       if (ed < esp + 1) enemy.path.shift();
     }
+    fearPulse = player.hidden ? Math.max(0, 1 - dToP / 150) * 0.6 : Math.max(0, 1 - dToP / (ENEMY_SIGHT + 60));
+    if (enemy.chasing && !player.hidden) fearPulse = Math.max(fearPulse, 0.4);
 
-    // Miedo según cercanía (para audio + visual)
-    fearPulse = Math.max(0, 1 - dToPlayer / (ENEMY_SIGHT + 60));
-    if (enemy.chasing) fearPulse = Math.max(fearPulse, 0.35);
+    // ¿Te atrapó? (no si estás escondido)
+    if (!player.hidden && dToP < PLAYER_R + 13) { lose(); return; }
 
-    // ¿Te atrapó?
-    if (dToPlayer < PLAYER_R + 13) { lose(); return; }
-
-    elapsed = (performance.now() - startTime) / 1000;
-    updateTime();
+    elapsed = (now - startTime) / 1000; updateTime();
   }
 
   // ---------------------------------------------------------------- Render
   function draw() {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
+    ctx.save(); ctx.translate(-camX, -camY);
 
-    // Cámara centrada en el jugador
-    const camX = player.x - VIEW_W / 2;
-    const camY = player.y - VIEW_H / 2;
-
-    ctx.save();
-    ctx.translate(-camX, -camY);
-
-    // Rango de celdas visibles
-    const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
-    const y0 = Math.max(0, Math.floor(camY / TILE) - 1);
-    const x1 = Math.min(COLS, Math.ceil((camX + VIEW_W) / TILE) + 1);
-    const y1 = Math.min(ROWS, Math.ceil((camY + VIEW_H) / TILE) + 1);
-
-    for (let y = y0; y < y1; y++) {
-      for (let x = x0; x < x1; x++) {
-        const px = x * TILE, py = y * TILE;
-        if (grid[y][x] === 1) {
-          ctx.fillStyle = "#14161c";
-          ctx.fillRect(px, py, TILE, TILE);
-          ctx.strokeStyle = "#0a0b0f";
-          ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
-        } else {
-          ctx.fillStyle = "#2b2622";
-          ctx.fillRect(px, py, TILE, TILE);
-          // baldosas tenues
-          ctx.strokeStyle = "rgba(0,0,0,0.25)";
-          ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
-        }
+    const x0 = Math.max(0, Math.floor(camX / TILE) - 1), y0 = Math.max(0, Math.floor(camY / TILE) - 1);
+    const x1 = Math.min(COLS, Math.ceil((camX + VIEW_W) / TILE) + 1), y1 = Math.min(ROWS, Math.ceil((camY + VIEW_H) / TILE) + 1);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const px = x * TILE, py = y * TILE, r = hash(x, y);
+      if (grid[y][x] === 1) {
+        ctx.fillStyle = "#14161c"; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = "#20242e"; ctx.fillRect(px, py, TILE, 5);           // borde superior (3D)
+        ctx.fillStyle = "#0b0c10"; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        if (r > 0.82) { ctx.fillStyle = "rgba(60,50,45,0.25)"; ctx.fillRect(px + 6, py + 10 + r * 14, 10, 3); }
+      } else {
+        const b = 34 + (r * 10 | 0);
+        ctx.fillStyle = "rgb(" + (b + 9) + "," + (b + 2) + "," + (b - 4) + ")";
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
+        if (r > 0.6) { ctx.fillStyle = "rgba(0,0,0," + (0.06 + r * 0.1).toFixed(2) + ")"; ctx.fillRect(px + 4 + r * 20, py + 6 + r * 24, 3 + r * 4, 2 + r * 3); } // manchas
+        if (r > 0.9) { ctx.fillStyle = "rgba(90,20,20,0.18)"; ctx.fillRect(px + 10, py + 8, 16, 5); } // rastros
       }
     }
 
-    // Puerta
-    const open = collected >= KEY_COUNT;
-    ctx.fillStyle = open ? "#2f7d32" : "#5a3a1a";
-    ctx.fillRect(door.x - 16, door.y - 20, 32, 40);
-    ctx.fillStyle = open ? "#58c75c" : "#7a4a1f";
-    ctx.fillRect(door.x - 13, door.y - 17, 26, 34);
-    ctx.fillStyle = open ? "#d6ffd6" : "#caa15a";
-    ctx.beginPath(); ctx.arc(door.x + 7, door.y, 2.5, 0, 7); ctx.fill();
-    if (open) {
-      ctx.strokeStyle = "rgba(90,220,90,0.5)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(door.x - 18, door.y - 22, 36, 44);
-      ctx.lineWidth = 1;
-    }
-
-    // Llaves (brillo pulsante)
+    drawDoor();
+    // Trampas
     const t = performance.now() / 500;
-    for (const k of keys) {
-      if (k.taken) continue;
-      const g = 0.6 + Math.sin(t + k.x) * 0.4;
-      ctx.save();
-      ctx.shadowColor = "rgba(255,207,77," + g + ")";
-      ctx.shadowBlur = 16;
-      ctx.fillStyle = "#ffcf4d";
-      // cuerpo de la llave
-      ctx.beginPath(); ctx.arc(k.x - 4, k.y, 5, 0, 7); ctx.fill();
-      ctx.fillRect(k.x - 1, k.y - 1.5, 11, 3);
-      ctx.fillRect(k.x + 7, k.y - 1.5, 2.5, 5);
-      ctx.fillRect(k.x + 4, k.y - 1.5, 2.5, 4);
-      ctx.restore();
-    }
+    for (const tr of traps) drawTrap(tr);
+    // Armarios
+    for (const L of lockers) drawLocker(L);
+    // Pilas
+    for (const b of batteries) if (!b.taken) drawBattery(b, t);
+    // Notas
+    for (const n of notes) if (!n.taken) drawNote(n, t);
+    // Llaves
+    for (const k of keys) if (!k.taken) drawKey(k, t);
 
-    // Enemigo
     drawEnemy(enemy.x, enemy.y, t);
-
-    // Jugador
-    ctx.fillStyle = "#cfd3da";
-    ctx.beginPath(); ctx.arc(player.x, player.y, PLAYER_R, 0, 7); ctx.fill();
-    ctx.fillStyle = "#1a1c22";
-    ctx.beginPath(); ctx.arc(player.x, player.y, PLAYER_R - 4, 0, 7); ctx.fill();
-    ctx.fillStyle = "#cfd3da";
-    ctx.beginPath(); ctx.arc(player.x, player.y, 3, 0, 7); ctx.fill();
+    drawPlayer();
 
     ctx.restore();
 
-    // --- Oscuridad / linterna ---
+    // --- Iluminación: cono direccional + halo, con parpadeo ---
     const cx = player.x - camX, cy = player.y - camY;
-    const flick = 1 + Math.sin(performance.now() / 70) * 0.04 + (Math.random() - 0.5) * 0.03;
-    const r = VISION * flick * (1 - fearPulse * 0.22); // el miedo cierra la visión
-    const grad = ctx.createRadialGradient(cx, cy, r * 0.25, cx, cy, r);
-    grad.addColorStop(0, "rgba(0,0,0,0)");
-    grad.addColorStop(0.7, "rgba(0,0,0,0.35)");
-    grad.addColorStop(1, "rgba(0,0,0,1)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    const flick = 1 + Math.sin(performance.now() / 70) * 0.05 + (Math.random() - 0.5) * 0.05;
+    const battN = player.battery / 100;
+    const vision = player.hidden ? 0 : BASE_VISION * flick * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
 
-    // Viñeta roja cuando el monstruo está cerca
-    if (fearPulse > 0.05) {
-      const vg = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, Math.max(VIEW_W, VIEW_H) * 0.7);
-      vg.addColorStop(0, "rgba(0,0,0,0)");
-      vg.addColorStop(1, "rgba(120,0,0," + (fearPulse * 0.5).toFixed(3) + ")");
-      ctx.fillStyle = vg;
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    mctx.globalCompositeOperation = "source-over";
+    mctx.fillStyle = "#000"; mctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    mctx.globalCompositeOperation = "lighter";
+    // halo tenue
+    const ha = mctx.createRadialGradient(cx, cy, 0, cx, cy, AMBIENT_R);
+    ha.addColorStop(0, "rgba(120,120,130,0.85)"); ha.addColorStop(1, "rgba(0,0,0,0)");
+    mctx.fillStyle = ha; mctx.beginPath(); mctx.arc(cx, cy, AMBIENT_R, 0, 7); mctx.fill();
+    // cono de linterna (cálido)
+    if (vision > 1) {
+      mctx.save();
+      mctx.beginPath(); mctx.moveTo(cx, cy);
+      mctx.arc(cx, cy, vision, player.face - CONE_HALF, player.face + CONE_HALF); mctx.closePath(); mctx.clip();
+      const gc = mctx.createRadialGradient(cx, cy, AMBIENT_R * 0.5, cx, cy, vision);
+      gc.addColorStop(0, "rgba(255,244,214,1)");
+      gc.addColorStop(0.55, "rgba(240,224,180,0.72)");
+      gc.addColorStop(1, "rgba(0,0,0,0)");
+      mctx.fillStyle = gc; mctx.fillRect(cx - vision, cy - vision, vision * 2, vision * 2);
+      mctx.restore();
     }
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(mask, 0, 0);
+    ctx.globalCompositeOperation = "source-over";
+
+    // Viñeta roja de miedo
+    if (fearPulse > 0.05) {
+      const vg = ctx.createRadialGradient(cx, cy, 60, cx, cy, Math.max(VIEW_W, VIEW_H) * 0.7);
+      vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(120,0,0," + (fearPulse * 0.5).toFixed(3) + ")");
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+    // Escondido: casi todo negro con un hueco mínimo
+    if (player.hidden) {
+      ctx.fillStyle = "rgba(0,0,0,0.82)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillStyle = "rgba(180,180,190,0.5)"; ctx.font = "13px Courier New"; ctx.textAlign = "center";
+      ctx.fillText("· escondido ·  (E para salir)", cx, cy + 46);
+      ctx.textAlign = "left";
+    }
+
+    drawMinimap();
   }
 
+  function drawPlayer() {
+    const x = player.x, y = player.y;
+    if (player.hidden) return;
+    // sombra
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 8, 11, 5, 0, 0, 7); ctx.fill();
+    // cuerpo
+    ctx.fillStyle = "#3a4654"; ctx.beginPath(); ctx.arc(x, y, PLAYER_R, 0, 7); ctx.fill();
+    ctx.fillStyle = "#cfd6de"; ctx.beginPath(); ctx.arc(x, y, PLAYER_R - 4, 0, 7); ctx.fill();
+    // linterna en el frente
+    const fx = x + Math.cos(player.face) * (PLAYER_R + 2), fy = y + Math.sin(player.face) * (PLAYER_R + 2);
+    ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(fx, fy, 3.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, 7); ctx.fill();
+  }
   function drawEnemy(x, y, t) {
     const wob = Math.sin(t * 1.5) * 2;
-    ctx.save();
-    ctx.shadowColor = "rgba(150,0,0,0.6)";
-    ctx.shadowBlur = 18;
-    // cuerpo sombrío
-    ctx.fillStyle = "#1b0d12";
-    ctx.beginPath();
-    ctx.ellipse(x, y + 2, 13, 15 + wob, 0, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = "#2a1016";
-    ctx.beginPath();
-    ctx.ellipse(x, y - 4, 10, 11, 0, 0, 7);
-    ctx.fill();
+    ctx.save(); ctx.shadowColor = "rgba(150,0,0,0.6)"; ctx.shadowBlur = 18;
+    ctx.fillStyle = "#1b0d12"; ctx.beginPath(); ctx.ellipse(x, y + 2, 13, 15 + wob, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2a1016"; ctx.beginPath(); ctx.ellipse(x, y - 4, 10, 11, 0, 0, 7); ctx.fill();
+    // garras/jirones
+    ctx.strokeStyle = "rgba(20,8,10,0.9)"; ctx.lineWidth = 2;
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(x + i * 7, y + 10); ctx.lineTo(x + i * 9, y + 18 + wob); ctx.stroke(); }
     ctx.restore();
-    // ojos rojos
-    ctx.fillStyle = "#ff2a2a";
-    ctx.shadowColor = "#ff0000"; ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.arc(x - 4, y - 5, 2.2, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(x + 4, y - 5, 2.2, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ff2a2a"; ctx.shadowColor = "#ff0000"; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(x - 4, y - 5, 2.3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 4, y - 5, 2.3, 0, 7); ctx.fill();
     ctx.shadowBlur = 0;
+  }
+  function drawDoor() {
+    const open = collected >= KEY_COUNT;
+    ctx.save();
+    if (open) { ctx.shadowColor = "rgba(90,220,90,0.7)"; ctx.shadowBlur = 20; }
+    ctx.fillStyle = open ? "#2f7d32" : "#4a3118"; ctx.fillRect(door.x - 17, door.y - 22, 34, 44);
+    ctx.fillStyle = open ? "#58c75c" : "#6b4420"; ctx.fillRect(door.x - 13, door.y - 18, 26, 36);
+    ctx.restore();
+    ctx.fillStyle = open ? "#1a3a1a" : "#2a1b0c";
+    ctx.fillRect(door.x - 11, door.y - 16, 10, 32); ctx.fillRect(door.x + 1, door.y - 16, 10, 32);
+    ctx.fillStyle = open ? "#d6ffd6" : "#caa15a"; ctx.beginPath(); ctx.arc(door.x - 2, door.y, 2, 0, 7); ctx.fill();
+    if (open) { ctx.fillStyle = "#cfffcf"; ctx.font = "9px Courier New"; ctx.textAlign = "center"; ctx.fillText("SALIDA", door.x, door.y - 26); ctx.textAlign = "left"; }
+  }
+  function drawKey(k, t) {
+    const g = 0.6 + Math.sin(t + k.x) * 0.4;
+    ctx.save(); ctx.shadowColor = "rgba(255,207,77," + g + ")"; ctx.shadowBlur = 16; ctx.fillStyle = "#ffcf4d";
+    ctx.beginPath(); ctx.arc(k.x - 4, k.y, 5, 0, 7); ctx.fill();
+    ctx.fillRect(k.x - 1, k.y - 1.5, 11, 3); ctx.fillRect(k.x + 7, k.y - 1.5, 2.5, 5); ctx.fillRect(k.x + 4, k.y - 1.5, 2.5, 4);
+    ctx.restore();
+  }
+  function drawBattery(b, t) {
+    const g = 0.5 + Math.sin(t * 1.3 + b.x) * 0.4;
+    ctx.save(); ctx.shadowColor = "rgba(90,220,120," + g + ")"; ctx.shadowBlur = 12;
+    ctx.fillStyle = "#2f8f4f"; ctx.fillRect(b.x - 5, b.y - 7, 10, 14);
+    ctx.fillStyle = "#8fe08a"; ctx.fillRect(b.x - 5, b.y - 7, 10, 4);
+    ctx.fillStyle = "#cfffcf"; ctx.fillRect(b.x - 2, b.y - 10, 4, 3);
+    ctx.restore();
+    ctx.fillStyle = "#0b3b1e"; ctx.font = "7px Courier New"; ctx.textAlign = "center"; ctx.fillText("+", b.x, b.y + 3); ctx.textAlign = "left";
+  }
+  function drawNote(n, t) {
+    const g = 0.4 + Math.sin(t * 0.9 + n.x) * 0.3;
+    ctx.save(); ctx.shadowColor = "rgba(200,180,120," + g + ")"; ctx.shadowBlur = 10;
+    ctx.fillStyle = "#d8cba0"; ctx.fillRect(n.x - 6, n.y - 7, 12, 14);
+    ctx.restore();
+    ctx.strokeStyle = "rgba(90,80,55,0.8)"; ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(n.x - 4, n.y - 3 + i * 3.5); ctx.lineTo(n.x + 4, n.y - 3 + i * 3.5); ctx.stroke(); }
+  }
+  function drawLocker(L) {
+    const open = nearLocker === L && !player.hidden;
+    ctx.fillStyle = "#3a2d22"; ctx.fillRect(L.x - 13, L.y - 17, 26, 34);
+    ctx.fillStyle = open ? "#5a4636" : "#4a3a2c"; ctx.fillRect(L.x - 11, L.y - 15, 22, 30);
+    ctx.strokeStyle = "#241a12"; ctx.lineWidth = 1; ctx.strokeRect(L.x - 0.5, L.y - 15, 1, 30);
+    ctx.fillStyle = "#1a120c"; // rejillas
+    for (let i = 0; i < 3; i++) { ctx.fillRect(L.x - 8, L.y - 11 + i * 4, 6, 1.5); ctx.fillRect(L.x + 2, L.y - 11 + i * 4, 6, 1.5); }
+    ctx.fillStyle = "#caa15a"; ctx.fillRect(L.x - 3, L.y, 1.5, 4); ctx.fillRect(L.x + 1.5, L.y, 1.5, 4);
+  }
+  function drawTrap(tr) {
+    const near = dist(player.x, player.y, tr.x, tr.y) < 90;
+    if (!tr.triggered && !near) return; // ocultas hasta estar cerca
+    ctx.save();
+    ctx.globalAlpha = tr.triggered ? 1 : 0.65;
+    ctx.strokeStyle = tr.triggered ? "#b11" : "#6a6a6a"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tr.x, tr.y, 9, 0, 7); ctx.stroke();
+    // dientes
+    ctx.fillStyle = tr.triggered ? "#7a2222" : "#8a8a8a";
+    for (let a = 0; a < 8; a++) {
+      const ang = a / 8 * Math.PI * 2;
+      const ix = tr.x + Math.cos(ang) * 6, iy = tr.y + Math.sin(ang) * 6;
+      ctx.beginPath(); ctx.moveTo(ix, iy);
+      ctx.lineTo(tr.x + Math.cos(ang - 0.2) * 10, tr.y + Math.sin(ang - 0.2) * 10);
+      ctx.lineTo(tr.x + Math.cos(ang + 0.2) * 10, tr.y + Math.sin(ang + 0.2) * 10);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---------------------------------------------------------------- Minimapa
+  function drawMinimap() {
+    const s = 4, pad = 10;
+    const w = COLS * s, h = ROWS * s;
+    const ox = VIEW_W - w - pad, oy = VIEW_H - h - pad;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(ox - 4, oy - 4, w + 8, h + 8);
+    ctx.strokeStyle = "rgba(120,130,150,0.4)"; ctx.strokeRect(ox - 4.5, oy - 4.5, w + 9, h + 9);
+    // laberinto tenue
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if (grid[y][x] === 0) { ctx.fillStyle = "rgba(90,84,76,0.5)"; ctx.fillRect(ox + x * s, oy + y * s, s, s); }
+    }
+    const t = performance.now() / 300;
+    // llaves (pista)
+    for (const k of keys) if (!k.taken) {
+      const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE);
+      ctx.fillStyle = "rgba(255,207,77," + (0.5 + Math.sin(t + gx) * 0.5) + ")";
+      ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2);
+    }
+    // puerta
+    const open = collected >= KEY_COUNT;
+    ctx.fillStyle = open ? "#5ad45a" : "#b06a2a";
+    ctx.fillRect(ox + door.gx * s - 1, oy + door.gy * s - 1, s + 2, s + 2);
+    // enemigo (solo si persigue)
+    if (enemy.chasing && !player.hidden) {
+      const egx = Math.floor(enemy.x / TILE), egy = Math.floor(enemy.y / TILE);
+      ctx.fillStyle = "rgba(255,40,40," + (0.4 + Math.sin(t * 2) * 0.4) + ")";
+      ctx.fillRect(ox + egx * s - 1, oy + egy * s - 1, s + 2, s + 2);
+    }
+    // jugador
+    const pgx = Math.floor(player.x / TILE), pgy = Math.floor(player.y / TILE);
+    ctx.fillStyle = "#eef"; ctx.fillRect(ox + pgx * s, oy + pgy * s, s, s);
+    ctx.restore();
   }
 
   // ---------------------------------------------------------------- HUD / pantallas
   const elKeyCount = document.getElementById("keyCount");
   const elTime = document.getElementById("time");
   const elMsg = document.getElementById("msg");
-  let msgTimer = null;
+  const elBatt = document.getElementById("battFill");
+  const elPrompt = document.getElementById("prompt");
+  const elNote = document.getElementById("note");
+  let msgTimer = null, noteTimer = null;
   function updateHud() { elKeyCount.textContent = collected; }
+  function updateBatt() {
+    const b = Math.max(0, player.battery);
+    elBatt.style.width = b + "%";
+    elBatt.style.background = b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)";
+  }
   function updateTime() {
     const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
     elTime.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   }
+  function updatePrompt() {
+    if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); }
+    else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); }
+    else elPrompt.classList.remove("show");
+  }
   function flashMsg(txt) {
-    elMsg.textContent = txt;
-    elMsg.classList.add("show");
-    clearTimeout(msgTimer);
-    msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1800);
+    elMsg.textContent = txt; elMsg.classList.add("show");
+    clearTimeout(msgTimer); msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1900);
+  }
+  function showNote(html) {
+    elNote.innerHTML = "“" + html + "”"; elNote.classList.add("show");
+    clearTimeout(noteTimer); noteTimer = setTimeout(() => elNote.classList.remove("show"), 6500);
   }
 
   const startScreen = document.getElementById("startScreen");
   const overScreen = document.getElementById("overScreen");
   const winScreen = document.getElementById("winScreen");
-
   function startGame() {
-    initAudio();
-    if (actx && actx.state === "suspended") actx.resume();
-    startScreen.classList.add("hidden");
-    overScreen.classList.add("hidden");
-    winScreen.classList.add("hidden");
-    setup();
-    running = true;
-    last = performance.now();
-    if (!heartTimer) heartbeat();
+    initAudio(); if (actx && actx.state === "suspended") actx.resume();
+    startScreen.classList.add("hidden"); overScreen.classList.add("hidden"); winScreen.classList.add("hidden");
+    elNote.classList.remove("show"); document.getElementById("noteCount").textContent = "0";
+    setup(); running = true; last = performance.now(); if (!heartTimer) heartbeat();
   }
-
   function lose() {
-    running = false;
-    fearPulse = 1;
-    beep(70, 0.6, "sawtooth", 0.3);
-    setTimeout(() => beep(48, 0.9, "sawtooth", 0.3), 120);
-    document.getElementById("overText").textContent =
-      "Reuniste " + collected + " de " + KEY_COUNT + " llaves antes de que te alcanzara.";
+    running = false; fearPulse = 1;
+    beep(70, 0.6, "sawtooth", 0.3); setTimeout(() => beep(48, 0.9, "sawtooth", 0.3), 120);
+    document.getElementById("overText").textContent = "Reuniste " + collected + " de " + KEY_COUNT + " llaves antes de que te alcanzara.";
     overScreen.classList.remove("hidden");
   }
-
   function win() {
     running = false;
     const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
-    beep(660, 0.15, "triangle", 0.25);
-    setTimeout(() => beep(880, 0.15, "triangle", 0.25), 140);
-    setTimeout(() => beep(1180, 0.3, "triangle", 0.25), 300);
+    beep(660, 0.15, "triangle", 0.25); setTimeout(() => beep(880, 0.15, "triangle", 0.25), 140); setTimeout(() => beep(1180, 0.3, "triangle", 0.25), 300);
     document.getElementById("winText").textContent =
-      "Cruzaste la puerta con las 5 llaves en " +
-      String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0") + ". Por ahora, estás a salvo.";
+      "Cruzaste la puerta con las 5 llaves en " + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0") +
+      (notesFound ? ". Reuniste " + notesFound + " nota(s) de la historia." : ".") + " Por ahora, estás a salvo.";
     winScreen.classList.remove("hidden");
   }
-
   document.getElementById("startBtn").addEventListener("click", startGame);
   document.getElementById("retryBtn").addEventListener("click", startGame);
   document.getElementById("againBtn").addEventListener("click", startGame);
@@ -729,15 +786,12 @@
   // ---------------------------------------------------------------- Loop
   let last = performance.now();
   function frame(now) {
-    const dt = Math.min(3, (now - last) / 16.666); // normalizado a ~60fps
-    last = now;
+    const dt = Math.min(3, (now - last) / 16.666); last = now;
     if (running) update(dt);
     draw();
     requestAnimationFrame(frame);
   }
-  // Dibuja un fondo tenue bajo la pantalla de inicio
-  setup();
-  requestAnimationFrame(frame);
+  setup(); requestAnimationFrame(frame);
 })();
 </script>
 </body>
