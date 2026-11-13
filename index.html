@@ -134,7 +134,7 @@
        Algo más deambula aquí dentro. Si te acercas, te perseguirá.</p>
     <div class="controls">
       <kbd>W A S D</kbd> / flechas — moverte &nbsp;·&nbsp; la linterna apunta hacia donde caminas<br>
-      <kbd>F</kbd> — encender / apagar linterna &nbsp;·&nbsp; <kbd>E</kbd> — esconderte en un armario<br>
+      <kbd>F</kbd> — linterna: te deja ver, <span class="hi">pero la luz lo atrae</span> &nbsp;·&nbsp; <kbd>E</kbd> — esconderte<br>
       recoge <span class="hi">pilas</span> para la linterna &nbsp;·&nbsp; cuidado con las <span class="hi">trampas</span>
     </div>
     <button id="startBtn">Entrar</button>
@@ -164,7 +164,7 @@
   const ENEMY_SPEED = 1.7, ENEMY_CHASE_SPEED = 2.35;
   const BASE_VISION = 170, CONE_HALF = Math.PI * (110 / 2) / 180; // 110° total (más enfocado al frente)
   const AMBIENT_R = 42;                 // halo tenue alrededor del jugador
-  const KEY_COUNT = 5, ENEMY_SIGHT = 240;
+  const KEY_COUNT = 5, ENEMY_SIGHT = 255, ENEMY_SIGHT_DARK = 85; // la luz lo atrae: a oscuras casi no te detecta
   const N_BATTERIES = 4, N_NOTES = 3, N_TRAPS = 5, N_LOCKERS = 4;
   const BATT_DRAIN = 2.0;               // % por segundo
   const NOTE_TEXTS = [
@@ -358,7 +358,8 @@
   function toggleLight() {
     player.light = !player.light;
     beep(player.light ? 320 : 150, 0.06, "square", 0.12);
-    flashMsg(player.light ? "Linterna encendida" : "Linterna apagada (minimapa oculto)");
+    if (player.light) flashMsg("Linterna encendida — la luz lo atrae");
+    else flashMsg(enemy.chasing ? "Luz apagada… intenta perderlo en la oscuridad" : "Linterna apagada — te ocultas en la oscuridad");
     updateBatt();
   }
   function interact() {
@@ -498,8 +499,10 @@
     const dToP = dist(enemy.x, enemy.y, player.x, player.y);
     const alerted = now < enemy.alertUntil;
     const wasChasing = enemy.chasing;
-    // Oculto = invisible para el monstruo (salvo que una trampa lo tenga en alerta hacia ti)
-    enemy.chasing = (!player.hidden && dToP < ENEMY_SIGHT) || alerted;
+    // La luz lo atrae: con linterna encendida te detecta de lejos; apagada, casi tiene que tropezarte.
+    // Oculto en armario = invisible (salvo que una trampa lo tenga en alerta hacia ti).
+    const sight = player.light ? ENEMY_SIGHT : ENEMY_SIGHT_DARK;
+    enemy.chasing = (!player.hidden && dToP < sight) || alerted;
     enemy.repathT -= dt;
     if (enemy.repathT <= 0 || (enemy.chasing && !wasChasing) || enemy.path.length === 0) {
       enemyRepath(); enemy.repathT = enemy.chasing ? 24 : 70;
