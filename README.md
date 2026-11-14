@@ -1,32 +1,27 @@
 # Los Pasillos
 
-Juego de terror 2D con vista cenital. Despiertas en un complejo a oscuras y
-debes encontrar las **5 llaves** escondidas en los pasillos para abrir la
-**puerta** y escapar... mientras algo te caza en la oscuridad (y la luz lo atrae).
+Juego de terror 2D con vista cenital. Baja por los pisos de un complejo a oscuras:
+en cada uno reúne las **5 llaves** y cruza la **puerta**, mientras algo te caza
+(y la luz lo atrae). El último piso da a la superficie.
 
 ## Cómo jugar
 
 Abre `index.html` en cualquier navegador (no requiere instalación).
 
-- **Mover:** WASD / flechas (o joystick en móvil, o **control/gamepad** 🎮)
-- **Shift:** correr (necesitas las botas)
-- **F:** encender / apagar la linterna
-- **E:** esconderte en un armario
-- **Q:** lanzar un señuelo para distraer al monstruo
-- **Objetivo:** reúne las 5 llaves y llega a la puerta sin que te atrape
+- **Mover:** WASD / flechas (joystick en móvil, o control/gamepad 🎮)
+- **Shift:** correr (con botas) · **F:** linterna · **E:** esconderte · **Q:** señuelo · **P:** pausa
+- **Objetivo:** reúne 5 llaves por piso, baja y escapa del último
 
 ## Características
 
-- Laberinto generado al azar en cada partida
-- Linterna direccional (cono 110°) con parpadeos y apagones; se gasta con pilas
-- **La luz atrae al monstruo**: apágala para pasar desapercibido
-- Enemigo con IA (pathfinding BFS), huellas que deja al caminar y gruñido direccional
-- Barra de **cordura**: baja con el miedo, distorsiona la pantalla; se recupera escondido
-- **Música de fondo** ambiental y **pasos** del jugador (más rápidos al correr)
-- **Sustos** y sonidos ambientales aleatorios
-- Cinemáticas: intro con la historia, final al escapar (amanecer) y al morir (jumpscare)
-- Armarios para esconderte · trampas que lo atraen
-- Ítems: pilas, **llave maestra** (+2), **señuelos** y **botas** (correr)
-- 3 dificultades (Fácil / Normal / Pesadilla)
-- Récord de mejor tiempo guardado por dificultad (localStorage)
-- Pantalla de historia y créditos · minimapa con pistas · soporte de gamepad
+- Varios **pisos** temáticos (El Complejo, La Biblioteca) con salas y un monstruo por piso
+- Laberinto generado al azar; linterna direccional (cono 110°) con parpadeos y apagones
+- **La luz atrae al monstruo**: apágala para pasar desapercibido · pilas, armarios, trampas
+- Ítems: llave maestra (+2), señuelos (distraen al monstruo), botas (correr)
+- Barra de **cordura** (distorsiona la pantalla), **huellas** y gruñido direccional
+- **Eventos de guion**: sustos, mensajes, sangre en paredes, apagones de luz
+- **Notas** con historia + **final secreto** si las reúnes todas
+- **Logros**, **tabla de récords** por dificultad, **dificultades** (Fácil/Normal/Pesadilla)
+- **Menú de opciones** (volumen de música/efectos, brillo, pausa) + **tutorial**
+- Cinemáticas: intro, transición de piso, final al escapar y al morir
+- Música de fondo y pasos (más rápidos al correr) · soporte de gamepad

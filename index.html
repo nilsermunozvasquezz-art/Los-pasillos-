@@ -14,6 +14,7 @@
   /* HUD */
   #hud { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 16px; font-size: 14px; letter-spacing: 1px; text-shadow: 0 0 6px rgba(0,0,0,0.95); pointer-events: none; z-index: 5; gap: 12px; }
   #hudLeft { display: flex; flex-direction: column; gap: 5px; }
+  #floorHud { font-size: 11px; color: #b89a6a; letter-spacing: 1px; }
   #keys b { color: #ffcf4d; }
   .bar { display: flex; align-items: center; gap: 7px; font-size: 11px; }
   .bar .track { width: 92px; height: 9px; border: 1px solid #4a5560; background: #0c0f12; position: relative; }
@@ -25,6 +26,7 @@
   #itemsHud .ic { color: #ffcf4d; }
   #msg { color: #d14b4b; font-size: 13px; opacity: 0; transition: opacity .25s; text-align: center; flex: 1; margin-top: 4px; }
   #msg.show { opacity: 1; }
+  #pauseBtn { pointer-events: auto; background: rgba(0,0,0,.4); border: 1px solid #556; color: #cdd; font-family: inherit; font-size: 15px; width: 34px; height: 30px; cursor: pointer; border-radius: 3px; }
 
   #note { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px); max-width: min(560px,90vw); background: rgba(14,10,8,.94); border: 1px solid #5a4a30; border-left: 3px solid #b8923f; padding: 16px 20px; z-index: 7; color: #d8c7a0; font-size: 14px; line-height: 1.6; opacity: 0; pointer-events: none; transition: opacity .4s, transform .4s; box-shadow: 0 0 30px rgba(0,0,0,.8); }
   #note.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -33,6 +35,10 @@
   #prompt { position: fixed; left: 50%; top: 58%; transform: translateX(-50%); background: rgba(0,0,0,.6); border: 1px solid #556; padding: 6px 14px; border-radius: 3px; font-size: 13px; letter-spacing: 1px; color: #cfe; z-index: 6; opacity: 0; transition: opacity .15s; pointer-events: none; }
   #prompt.show { opacity: 1; }
   #prompt b { color: #ffd166; }
+
+  #scareText { position: fixed; left: 50%; top: 42%; transform: translate(-50%,-50%); z-index: 8; font-size: clamp(30px,8vw,60px); font-weight: bold; letter-spacing: 6px; color: #d41414; text-shadow: 0 0 24px rgba(200,0,0,.9); opacity: 0; pointer-events: none; }
+  #scareText.show { animation: scarePop 1s ease-out; }
+  @keyframes scarePop { 0%{opacity:0;transform:translate(-50%,-50%) scale(1.3);} 10%{opacity:1;} 70%{opacity:1;transform:translate(-50%,-50%) scale(1);} 100%{opacity:0;} }
 
   /* Overlays */
   .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; background: radial-gradient(ellipse at center, rgba(20,0,0,.6), rgba(0,0,0,.97)); z-index: 10; overflow-y: auto; }
@@ -49,9 +55,12 @@
   .best { font-size: 13px; color: #7fa; letter-spacing: 1px; margin-bottom: 16px; min-height: 18px; }
   .controls { font-size: 12.5px; color: #778; margin-bottom: 20px; line-height: 2; }
   .controls kbd { background: #1b1f26; border: 1px solid #39404a; border-radius: 3px; padding: 1px 7px; color: #cfe; }
-  button.main { font-family: inherit; font-size: 17px; letter-spacing: 3px; padding: 14px 34px; background: transparent; color: #ddd; border: 1px solid #b11; cursor: pointer; transition: all .18s; text-transform: uppercase; }
+  button.main { font-family: inherit; font-size: 17px; letter-spacing: 3px; padding: 14px 34px; background: transparent; color: #ddd; border: 1px solid #b11; cursor: pointer; transition: all .18s; text-transform: uppercase; margin: 5px; }
   button.main:hover { background: #b11; color: #fff; box-shadow: 0 0 22px rgba(180,0,0,.6); }
-  .link { background: none; border: none; color: #88a; font-family: inherit; font-size: 13px; letter-spacing: 1px; cursor: pointer; margin-top: 16px; text-decoration: underline dotted; }
+  button.alt { border-color: #4a6a8a; }
+  button.alt:hover { background: #2a5a7a; box-shadow: 0 0 18px rgba(60,120,180,.5); }
+  .menuRow { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+  .link { background: none; border: none; color: #88a; font-family: inherit; font-size: 13px; letter-spacing: 1px; cursor: pointer; margin-top: 14px; text-decoration: underline dotted; }
   .link:hover { color: #cce; }
   .story { max-width: 560px; text-align: left; font-size: 14px; line-height: 1.8; color: #b7ad98; margin-bottom: 18px; }
   .story p { color: #b7ad98; margin-bottom: 12px; max-width: none; }
@@ -59,6 +68,21 @@
   .hint { margin-top: 18px; font-size: 12px; color: #555; letter-spacing: 1px; }
   .flicker { animation: flick 5s infinite; }
   @keyframes flick { 0%,19%,21%,80%,100%{opacity:1;} 20%{opacity:.35;} 82%{opacity:.55;} }
+  /* sliders / tablas */
+  .optRow { display: flex; align-items: center; gap: 14px; margin: 10px 0; font-size: 14px; color: #bbb; width: min(420px, 86vw); }
+  .optRow label { width: 110px; text-align: right; letter-spacing: 1px; }
+  .optRow input[type=range] { flex: 1; accent-color: #b11; }
+  .optRow .val { width: 44px; text-align: left; color: #7fa; }
+  table.rec { border-collapse: collapse; margin: 6px auto 14px; font-size: 14px; }
+  table.rec td { padding: 3px 14px; color: #cbb; }
+  table.rec td.n { color: #778; }
+  .achList { max-width: 460px; width: 86vw; margin: 4px auto 16px; text-align: left; }
+  .achItem { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid #222; font-size: 13px; }
+  .achItem .nm { color: #ffcf4d; width: 130px; }
+  .achItem .ds { color: #889; flex: 1; }
+  .achItem.locked .nm { color: #556; }
+  .achItem.locked .ds { color: #445; }
+  .achItem .st { color: #6ad46a; }
 
   /* Touch */
   #touch { position: fixed; inset: 0; z-index: 6; pointer-events: none; display: none; }
@@ -77,6 +101,7 @@
 
   <div id="hud">
     <div id="hudLeft">
+      <div id="floorHud">PISO 1/2 · El Complejo</div>
       <div id="keys">LLAVES: <b><span id="keyCount">0</span>/5</b></div>
       <div class="bar" id="battWrap">LINTERNA <div class="track"><div class="fill" id="battFill"></div></div></div>
       <div class="bar" id="sanWrap">CORDURA <div class="track"><div class="fill" id="sanFill"></div></div></div>
@@ -84,11 +109,12 @@
       <div id="itemsHud">NOTAS <span class="ic" id="noteCount">0</span> · SEÑUELOS <span class="ic" id="decoyCount">0</span></div>
     </div>
     <div id="msg"></div>
-    <div style="width:92px"></div>
+    <button id="pauseBtn">⏸</button>
   </div>
 
   <div id="prompt"><b>E</b> esconderte</div>
   <div id="note"></div>
+  <div id="scareText"></div>
   <button id="cineSkip">SALTAR ▶</button>
 
   <div id="touch">
@@ -101,21 +127,66 @@
   <!-- Start -->
   <div class="screen" id="startScreen">
     <h1 class="flicker">LOS PASILLOS</h1>
-    <p>Despiertas en un complejo a oscuras. Encuentra las <span class="hi">5 llaves</span> y llega a la
-       <span class="hi">puerta</span> para escapar. Algo te caza… y <span class="hi">la luz lo atrae</span>.</p>
+    <p>Baja por los pisos del complejo. En cada uno, reúne las <span class="hi">5 llaves</span> y llega a la
+       <span class="hi">puerta</span>. Algo te caza… y <span class="hi">la luz lo atrae</span>.</p>
     <div class="diffRow">
       <button class="diffBtn" data-diff="facil">Fácil</button>
       <button class="diffBtn selected" data-diff="normal">Normal</button>
       <button class="diffBtn" data-diff="pesadilla">Pesadilla</button>
     </div>
     <div class="best" id="bestStart"></div>
-    <div class="controls">
-      <kbd>W A S D</kbd>/flechas mover · <kbd>Shift</kbd> correr (con botas) · <kbd>F</kbd> linterna<br>
-      <kbd>E</kbd> esconderte · <kbd>Q</kbd> lanzar señuelo · también con <span class="hi">control / gamepad</span> 🎮
-    </div>
     <button class="main" id="startBtn">Entrar</button>
+    <div class="menuRow">
+      <button class="main alt" id="howBtn">Cómo jugar</button>
+      <button class="main alt" id="optionsBtn">Opciones</button>
+      <button class="main alt" id="recordsBtn">Récords</button>
+    </div>
     <button class="link" id="storyBtn">📜 Historia y créditos</button>
     <div class="hint" id="startHint">Sonido recomendado 🎧</div>
+  </div>
+
+  <!-- Tutorial -->
+  <div class="screen hidden" id="tutScreen">
+    <h2>CÓMO JUGAR</h2>
+    <div class="story">
+      <p>🎯 <b>Objetivo:</b> en cada piso, reúne las <span class="hi">5 llaves</span> y cruza la <span class="hi">puerta</span>. Baja hasta escapar del último piso.</p>
+      <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
+      <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
+      <p>🧠 <b>Cordura:</b> baja con el miedo y distorsiona la pantalla; se recupera escondido o lejos del peligro. Cuidado con las <span class="hi">trampas</span> del suelo.</p>
+    </div>
+    <div class="controls">
+      <kbd>WASD</kbd>/flechas mover · <kbd>Shift</kbd> correr · <kbd>F</kbd> linterna · <kbd>E</kbd> esconder · <kbd>Q</kbd> señuelo · <kbd>P</kbd> pausa · 🎮 control
+    </div>
+    <button class="main" id="tutClose">Entendido</button>
+  </div>
+
+  <!-- Opciones -->
+  <div class="screen hidden" id="optionsScreen">
+    <h2>OPCIONES</h2>
+    <div class="optRow"><label>Música</label><input type="range" id="optMusic" min="0" max="100" value="85"><span class="val" id="optMusicVal">85%</span></div>
+    <div class="optRow"><label>Efectos</label><input type="range" id="optSfx" min="0" max="100" value="90"><span class="val" id="optSfxVal">90%</span></div>
+    <div class="optRow"><label>Brillo</label><input type="range" id="optBright" min="70" max="150" value="100"><span class="val" id="optBrightVal">100%</span></div>
+    <button class="main" id="optClose">Volver</button>
+  </div>
+
+  <!-- Récords -->
+  <div class="screen hidden" id="recordsScreen">
+    <h2>RÉCORDS</h2>
+    <div id="recTitle" class="best"></div>
+    <table class="rec" id="recTable"></table>
+    <h2 style="font-size:22px">LOGROS</h2>
+    <div class="achList" id="achList"></div>
+    <button class="main" id="recClose">Volver</button>
+  </div>
+
+  <!-- Pausa -->
+  <div class="screen hidden" id="pauseScreen">
+    <h2>PAUSA</h2>
+    <button class="main" id="resumeBtn">Reanudar</button>
+    <div class="menuRow">
+      <button class="main alt" id="pauseOptBtn">Opciones</button>
+      <button class="main alt" id="quitBtn">Salir al menú</button>
+    </div>
   </div>
 
   <!-- Historia -->
@@ -125,13 +196,12 @@
       <p>El complejo subterráneo llevaba años cerrado. Nadie recordaba qué se investigaba en sus pasillos
          sin ventanas… hasta que algo empezó a moverse ahí abajo.</p>
       <p>Cuando por fin se dieron cuenta, ya era tarde: <span class="hi">lo</span> que vivía en la oscuridad había
-         aprendido a seguir la luz. Sellaron la salida con cinco cerraduras y lanzaron las llaves por los corredores,
-         con la esperanza de que nadie volviera a abrir esa puerta.</p>
+         aprendido a seguir la luz. Sellaron cada piso con cinco cerraduras y lanzaron las llaves por los corredores,
+         con la esperanza de que nadie bajara hasta el fondo.</p>
       <p>Tú despiertas dentro. Una linterna moribunda, unos armarios para esconderte y las notas de los que
-         estuvieron antes. Reúne las cinco llaves, apaga la luz cuando <span class="hi">lo</span> sientas cerca,
-         y reza por llegar a la puerta.</p>
+         estuvieron antes. Baja piso por piso, reúne las llaves y reza por llegar a la superficie.</p>
     </div>
-    <div class="credits">Los Pasillos · juego de terror 2D · hecho con 🖤 en un fin de semana.</div>
+    <div class="credits">Los Pasillos · juego de terror 2D · hecho con 🖤.</div>
     <button class="main" id="storyClose">Volver</button>
   </div>
 
@@ -167,13 +237,35 @@
   };
   let diffName = "normal", diff = DIFF.normal;
 
+  // Pisos y temas
+  const FLOORS = [
+    { name: "El Complejo", theme: "complex" },
+    { name: "La Biblioteca", theme: "library" },
+  ];
+  const THEMES = {
+    complex: { wall: "#14161c", wallTop: "#20242e", wallBot: "#0b0c10", fBase: 34, fTint: [9, 2, -4], decor: "grime" },
+    library: { wall: "#241a10", wallTop: "#3a2a1a", wallBot: "#140d06", fBase: 40, fTint: [16, 7, -5], decor: "books" },
+  };
+  const BOOK_COLORS = ["#6a2a2a", "#2a4a66", "#4a5a2a", "#6a5424", "#56285a", "#2a5a52"];
+  let floorIdx = 0;
+
   const NOTE_TEXTS = [
     "Día 3. Cambiaron las cerraduras. Cinco llaves ahora, repartidas por los pasillos. <span class='q'>¿Por qué cinco?</span>",
     "No enciendan la linterna cuando <span class='q'>lo</span> oigan cerca. La luz lo atrae. Apáguenla y aguanten.",
     "Las pilas se acaban rápido. Busquen más. Y si hallan unas botas, corran: sirven para escapar.",
     "Las trampas del suelo hacen ruido y <span class='q'>lo</span> llaman. Pero un señuelo bien lanzado lo aleja de ti.",
-    "La puerta del fondo da a la superficie. Solo se abre con las cinco. Corran y no miren atrás."
+    "La puerta de cada piso baja uno más hondo. La última da a la superficie. No miren atrás.",
+    "En la biblioteca guardaban los informes. Todos dicen lo mismo: <span class='q'>no estaba muerto, solo esperaba</span>.",
+    "Lo trajimos nosotros. Pensamos que podíamos estudiarlo. Dios nos perdone.",
+    "Si lees esto y juntaste todas las notas: hay otra salida. Busca la verdad en el último piso."
   ];
+  const SCARE_MSGS = ["NO MIRES ATRÁS", "ESTÁ AQUÍ", "CORRE", "TE VE", "DETRÁS DE TI", "NO HAY SALIDA", "YA TE ENCONTRÓ"];
+
+  // Ajustes (localStorage)
+  let settings = { music: 0.85, sfx: 0.9, bright: 1.0 };
+  function loadSettings() { try { const s = JSON.parse(localStorage.getItem("lospasillos_settings")); if (s) settings = Object.assign(settings, s); } catch (e) {} }
+  function saveSettings() { try { localStorage.setItem("lospasillos_settings", JSON.stringify(settings)); } catch (e) {} }
+  loadSettings();
 
   // ---------------------------------------------------------------- Canvas
   const canvas = document.getElementById("game");
@@ -189,7 +281,7 @@
   window.addEventListener("resize", resize); resize();
 
   // ---------------------------------------------------------------- Maze
-  let grid = [];
+  let grid = [], rooms = [];
   function generateMaze() {
     grid = Array.from({ length: ROWS }, () => Array(COLS).fill(1));
     const stack = [[1, 1]]; grid[1][1] = 0;
@@ -201,6 +293,14 @@
       else stack.pop();
     }
     for (let i = 0; i < 24; i++) { const x = 1 + 2 * ((Math.random() * ((COLS - 1) / 2)) | 0), y = 1 + 2 * ((Math.random() * ((ROWS - 1) / 2)) | 0); const [dx, dy] = dirs[(Math.random() * 4) | 0], wx = x + dx / 2, wy = y + dy / 2; if (wx > 0 && wx < COLS - 1 && wy > 0 && wy < ROWS - 1) grid[wy][wx] = 0; }
+    // Salas abiertas
+    rooms = [];
+    for (let i = 0; i < 3; i++) {
+      const rw = 3 + ((Math.random() * 2) | 0), rh = 3 + ((Math.random() * 2) | 0);
+      const rx = 2 + ((Math.random() * (COLS - rw - 3)) | 0), ry = 2 + ((Math.random() * (ROWS - rh - 3)) | 0);
+      for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) grid[y][x] = 0;
+      rooms.push({ x: rx, y: ry, w: rw, h: rh });
+    }
   }
   function isWall(px, py) { const gx = Math.floor(px / TILE), gy = Math.floor(py / TILE); if (gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS) return true; return grid[gy][gx] === 1; }
   function floorCells() { const c = []; for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) if (grid[y][x] === 0) c.push([x, y]); return c; }
@@ -214,15 +314,16 @@
   // ---------------------------------------------------------------- Estado
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, stepAt: 0 };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 };
-  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], decoysActive = [];
+  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], decoysActive = [], bloodDecals = [];
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
-  let collected = 0, notesFound = 0;
-  let running = false, startTime = 0, elapsed = 0, fearPulse = 0;
+  let collected = 0, notesFound = 0, notesPlaced = 0;
+  let running = false, paused = false, startTime = 0, elapsed = 0, fearPulse = 0;
   let nearLocker = null;
-  let glitchUntil = 0, glitchLevel = 1;       // apagones de linterna
-  let scareUntil = 0, scareSide = 1;          // susto visual
-  let newRecord = false;
-  let cine = null;                             // cinemática de intro
+  let glitchUntil = 0, glitchLevel = 1, flashWhiteUntil = 0;
+  let scareUntil = 0, scareSide = 1;
+  let newRecord = false, newAch = [];
+  let runSprinted = false, runChased = false;
+  let cine = null;
 
   function cellCenter(cx, cy) { return { x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2 }; }
   function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
@@ -237,11 +338,15 @@
   }
   const mk = ([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, taken: false }; };
 
-  function setup() {
+  // Construye un piso (fresh = partida nueva; si no, conserva batería/botas/señuelos)
+  function buildFloor(fresh) {
     diff = DIFF[diffName];
     generateMaze();
     const p = cellCenter(1, 1);
-    Object.assign(player, { x: p.x, y: p.y, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, stepAt: 0 });
+    player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0; player.face = Math.PI / 4;
+    player.hidden = false; player.stunUntil = 0; player.light = true; player.stepAt = 0; player.stamina = 100;
+    if (fresh) { player.battery = 100; player.hasBoots = false; player.decoys = 0; player.sanity = 100; }
+    else { player.sanity = Math.min(100, player.sanity + 35); }
 
     const sd = bfsFrom(1, 1);
     const cells = floorCells().filter(([x, y]) => sd[y][x] >= 0);
@@ -255,9 +360,11 @@
     keys = pickSpread(farOrder, KEY_COUNT, 4, used).map(mk);
     masterKeys = pickSpread(farOrder.slice().reverse(), N_MASTERKEY, 3, used).map(mk);
     batteries = pickSpread(nearOrder, N_BATTERIES, 3, used).map(mk);
-    boots = pickSpread(nearOrder, N_BOOTS, 3, used).map(mk);
+    boots = player.hasBoots ? [] : pickSpread(nearOrder, N_BOOTS, 3, used).map(mk);
     decoyPickups = pickSpread(nearOrder, N_DECOY_PICKUPS, 3, used).map(mk);
-    notes = pickSpread(nearOrder, N_NOTES, 3, used).map((c, i) => { const o = mk(c); o.text = NOTE_TEXTS[i % NOTE_TEXTS.length]; return o; });
+    const notePool = NOTE_TEXTS.slice(); shuffle(notePool);
+    notes = pickSpread(nearOrder, N_NOTES, 3, used).map((c, i) => { const o = mk(c); o.text = notePool[i % notePool.length]; return o; });
+    notesPlaced += notes.length;
     lockers = pickSpread(nearOrder, N_LOCKERS, 4, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, gx: x, gy: y }; });
     traps = pickSpread(nearOrder, N_TRAPS, 2, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, triggered: false }; });
 
@@ -265,10 +372,16 @@
     const ec = cellCenter(es[0], es[1]);
     Object.assign(enemy, { x: ec.x, y: ec.y, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 });
 
-    decoysActive = []; collected = 0; notesFound = 0; nearLocker = null; fearPulse = 0; newRecord = false;
-    glitchUntil = 0; scareUntil = 0;
-    updateHud(); startTime = performance.now(); elapsed = 0;
+    decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; fearPulse = 0;
+    glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0;
+    document.getElementById("stamWrap").style.display = player.hasBoots ? "flex" : "none";
+    updateHud(); updateBatt(); updateSan(); updateFloorHud();
   }
+  function newRun() {
+    floorIdx = 0; notesFound = 0; notesPlaced = 0; newRecord = false; newAch = []; runSprinted = false; runChased = false;
+    buildFloor(true); startTime = performance.now(); elapsed = 0;
+  }
+  function updateFloorHud() { document.getElementById("floorHud").textContent = "PISO " + (floorIdx + 1) + "/" + FLOORS.length + " · " + FLOORS[floorIdx].name; }
 
   // ---------------------------------------------------------------- Input
   const pressed = {};
@@ -278,6 +391,8 @@
     if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = true; e.preventDefault(); }
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") pressed.sprint = true;
     if (!running) return;
+    if (e.code === "KeyP" || e.code === "Escape") { togglePause(); e.preventDefault(); return; }
+    if (paused) return;
     if (e.code === "KeyE" || e.code === "Space") { interact(); e.preventDefault(); }
     if (e.code === "KeyF") { toggleLight(); e.preventDefault(); }
     if (e.code === "KeyQ") { throwDecoy(); e.preventDefault(); }
@@ -306,8 +421,9 @@
   stick.addEventListener("mousedown", stickStart);
   addEventListener("mousemove", e => { if (touch.active) stickMove(e); });
   addEventListener("mouseup", stickEnd);
-  function bindBtn(id, fn) { const el = document.getElementById(id); el.addEventListener("touchstart", e => { e.preventDefault(); if (running) fn(); }); el.addEventListener("mousedown", e => { e.preventDefault(); if (running) fn(); }); }
+  function bindBtn(id, fn) { const el = document.getElementById(id); el.addEventListener("touchstart", e => { e.preventDefault(); if (running && !paused) fn(); }); el.addEventListener("mousedown", e => { e.preventDefault(); if (running && !paused) fn(); }); }
   bindBtn("actionBtn", interact); bindBtn("lightBtn", toggleLight); bindBtn("decoyBtn", throwDecoy);
+  document.getElementById("pauseBtn").addEventListener("click", () => { if (running) togglePause(); });
   if ("ontouchstart" in window) { document.getElementById("touch").style.display = "block"; document.getElementById("startHint").textContent = "Joystick + botones · Sonido 🎧"; }
 
   // Gamepad
@@ -325,7 +441,8 @@
     gp.sprint = !!((p.buttons[6] && p.buttons[6].pressed) || (p.buttons[7] && p.buttons[7].pressed) || (p.buttons[10] && p.buttons[10].pressed));
     const hit = i => p.buttons[i] && p.buttons[i].pressed && !gpPrev[i];
     if (cine) { if (hit(0) || hit(9)) endCinematic(); gpPrev = p.buttons.map(b => b.pressed); return; }
-    if (!running) { if (hit(0) || hit(9)) startGame(); }
+    if (hit(9)) { if (running) togglePause(); }
+    if (!running || paused) { if (hit(0)) startBtnAction(); }
     else { if (hit(0)) interact(); if (hit(1)) toggleLight(); if (hit(2)) throwDecoy(); if (hit(3)) toggleLight(); }
     gpPrev = p.buttons.map(b => b.pressed);
   }
@@ -353,32 +470,31 @@
   }
 
   // ---------------------------------------------------------------- Audio
-  let actx = null, droneGain = null, musicGain = null, heartTimer = null, ambTimer = null, growlTimer = null, musicTimer = null;
+  let actx = null, droneGain = null, musicGain = null, sfxGain = null, heartTimer = null, ambTimer = null, growlTimer = null, musicTimer = null, evTimer = null;
   function initAudio() {
     if (actx) return;
     try {
       actx = new (window.AudioContext || window.webkitAudioContext)();
+      musicGain = actx.createGain(); musicGain.gain.value = settings.music; musicGain.connect(actx.destination);
+      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx; sfxGain.connect(actx.destination);
       const o1 = actx.createOscillator(), o2 = actx.createOscillator();
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
-      droneGain = actx.createGain(); droneGain.gain.value = 0.04;
-      o1.connect(droneGain); o2.connect(droneGain); droneGain.connect(actx.destination); o1.start(); o2.start();
-      musicGain = actx.createGain(); musicGain.gain.value = 0.95; musicGain.connect(actx.destination);
+      droneGain = actx.createGain(); droneGain.gain.value = 0.045;
+      o1.connect(droneGain); o2.connect(droneGain); droneGain.connect(musicGain); o1.start(); o2.start();
       if (!musicTimer) musicLoop();
     } catch (e) { actx = null; }
   }
-  // --- Música de fondo (acordes en tono menor que loopean) ---
+  function applyAudioSettings() { if (!actx) return; musicGain.gain.value = settings.music; sfxGain.gain.value = settings.sfx; }
   const MUSIC_CHORDS = [[110, 130.81, 164.81], [87.31, 130.81, 174.61], [73.42, 110, 146.83], [82.41, 123.47, 164.81]];
-  const MELODY = [329.63, 392.00, 440.00, 523.25, 440.00, 392.00, 349.23, 329.63]; // A menor pentatónica
+  const MELODY = [329.63, 392.00, 440.00, 523.25, 440.00, 392.00, 349.23, 329.63];
   let musicIdx = 0;
   function playPad(freqs, dur, vol) {
     if (!actx) return; const t = actx.currentTime;
-    for (const f of freqs) {
-      for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.45]]) {
-        const o = actx.createOscillator(), g = actx.createGain();
-        o.type = layer[0]; o.frequency.value = f + layer[1]; g.gain.value = 0; o.connect(g); g.connect(musicGain);
-        g.gain.linearRampToValueAtTime(layer[2], t + dur * 0.3); g.gain.linearRampToValueAtTime(layer[2] * 0.8, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
-        o.start(t); o.stop(t + dur + 0.1);
-      }
+    for (const f of freqs) for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.45]]) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = layer[0]; o.frequency.value = f + layer[1]; g.gain.value = 0; o.connect(g); g.connect(musicGain);
+      g.gain.linearRampToValueAtTime(layer[2], t + dur * 0.3); g.gain.linearRampToValueAtTime(layer[2] * 0.8, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.1);
     }
   }
   function playMelodyNote(f, delay, vol) {
@@ -395,24 +511,21 @@
     const n = 2 + (Math.random() < 0.5 ? 1 : 0);
     for (let i = 0; i < n; i++) playMelodyNote(MELODY[(musicIdx * 2 + i) % MELODY.length], 400 + i * 1300 + Math.random() * 300, 0.055);
     musicIdx++;
-    if (musicGain) musicGain.gain.setTargetAtTime(0.95 + Math.min(0.5, fearPulse * 0.5), actx.currentTime, 1.0);
+    if (musicGain) musicGain.gain.setTargetAtTime(settings.music * (1 + Math.min(0.5, fearPulse * 0.5)), actx.currentTime, 1.0);
     musicTimer = setTimeout(musicLoop, 4500);
   }
-  // --- Pasos del jugador ---
   function footstep(run) {
     if (!actx) return; const t = actx.currentTime;
-    // cuerpo de la pisada: un "golpe" con tono que baja rápido
     const o = actx.createOscillator(), g = actx.createGain();
     o.type = "sine"; o.frequency.setValueAtTime(run ? 200 : 155, t); o.frequency.exponentialRampToValueAtTime(run ? 72 : 55, t + 0.09);
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(run ? 0.24 : 0.16, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + (run ? 0.12 : 0.15));
-    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.17);
-    // roce del pie: ráfaga corta de ruido
+    o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + 0.17);
     noise(run ? 0.05 : 0.055, run ? 0.075 : 0.05, run ? "highpass" : "bandpass", run ? 2600 : 900);
   }
   function beep(freq, dur, type, vol) {
     if (!actx) return;
     const o = actx.createOscillator(), g = actx.createGain();
-    o.type = type || "square"; o.frequency.value = freq; g.gain.value = 0; o.connect(g); g.connect(actx.destination);
+    o.type = type || "square"; o.frequency.value = freq; g.gain.value = 0; o.connect(g); g.connect(sfxGain);
     const t = actx.currentTime; g.gain.linearRampToValueAtTime(vol || 0.15, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.15)); o.start(t); o.stop(t + (dur || 0.15) + 0.02);
   }
   function noise(dur, vol, type, freq, pan) {
@@ -424,7 +537,7 @@
     const g = actx.createGain(); g.gain.value = 0; n.connect(f); f.connect(g);
     let out = g;
     if (pan != null && actx.createStereoPanner) { const pn = actx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(pn); out = pn; }
-    out.connect(actx.destination);
+    out.connect(sfxGain);
     const t = actx.currentTime; g.gain.linearRampToValueAtTime(vol, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); n.start(t); n.stop(t + dur + 0.02);
   }
   function growl(vol, pan) {
@@ -434,11 +547,11 @@
     lfo.frequency.value = 17; lg.gain.value = 22; lfo.connect(lg); lg.connect(o.frequency); lfo.start();
     g.gain.value = 0; o.connect(g); let out = g;
     if (actx.createStereoPanner) { const pn = actx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(pn); out = pn; }
-    out.connect(actx.destination);
+    out.connect(sfxGain);
     const t = actx.currentTime; g.gain.linearRampToValueAtTime(vol, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5); o.start(t); o.stop(t + 0.55); lfo.stop(t + 0.55);
   }
   function heartbeat() {
-    if (!running || !actx) { heartTimer = setTimeout(heartbeat, 500); return; }
+    if (!running || paused || !actx) { heartTimer = setTimeout(heartbeat, 500); return; }
     const near = player.hidden ? fearPulse * 0.4 : fearPulse;
     const panic = player.sanity < 40 ? (40 - player.sanity) / 40 : 0;
     const n = Math.max(near, panic * 0.5);
@@ -447,24 +560,35 @@
   }
   function ambientLoop() {
     if (!actx) { ambTimer = setTimeout(ambientLoop, 4000); return; }
-    if (running && !player.hidden) {
+    if (running && !paused && !player.hidden) {
       const r = Math.random();
       if (r < 0.3) { noise(0.1, 0.12, "lowpass", 170); setTimeout(() => noise(0.1, 0.1, "lowpass", 170), 250); }
       else if (r < 0.55) noise(0.6, 0.07, "bandpass", 1700);
       else if (r < 0.75) noise(0.45, 0.09, "bandpass", 430);
       else if (r < 0.86) noise(0.22, 0.13, "lowpass", 110);
-      // susto visual ocasional sin persecución
       if (!enemy.chasing && player.sanity < 70 && Math.random() < 0.4) { scareUntil = performance.now() + 150; scareSide = Math.random() < 0.5 ? -1 : 1; noise(0.3, 0.16, "highpass", 2200); }
     }
     ambTimer = setTimeout(ambientLoop, 6000 + Math.random() * 9000);
   }
   function growlLoop() {
     let d = 999;
-    if (actx && running && !player.hidden) {
+    if (actx && running && !paused && !player.hidden) {
       d = dist(enemy.x, enemy.y, player.x, player.y);
       if (d < 440) { const vol = (1 - d / 440) * 0.33 + 0.04, pan = Math.max(-1, Math.min(1, (enemy.x - player.x) / 300)); growl(vol, pan); }
     }
     growlTimer = setTimeout(growlLoop, Math.max(650, 2600 - Math.max(0, 440 - d) * 4));
+  }
+  // --- Eventos de guion ---
+  const elScare = document.getElementById("scareText");
+  function scareFlash(txt) { elScare.textContent = txt; elScare.classList.remove("show"); void elScare.offsetWidth; elScare.classList.add("show"); }
+  function spawnBlood(cx, cy, n) { for (let i = 0; i < n; i++) bloodDecals.push({ x: cx + (Math.random() - 0.5) * 70, y: cy + (Math.random() - 0.5) * 70, r: 4 + Math.random() * 8, rot: Math.random() * 6 }); if (bloodDecals.length > 80) bloodDecals.splice(0, bloodDecals.length - 80); }
+  function eventLoop() {
+    if (!running || paused || player.hidden) { evTimer = setTimeout(eventLoop, 6000); return; }
+    const low = player.sanity < 50, r = Math.random();
+    if (r < 0.4) { scareFlash(SCARE_MSGS[(Math.random() * SCARE_MSGS.length) | 0]); noise(0.3, 0.16, "highpass", 2400); }
+    else if (r < 0.72) { spawnBlood(player.x + (Math.random() - 0.5) * 120, player.y + (Math.random() - 0.5) * 120, 3 + ((Math.random() * 3) | 0)); noise(0.3, 0.1, "lowpass", 300); }
+    else { glitchUntil = performance.now() + 650; glitchLevel = 0.06; flashWhiteUntil = performance.now() + 110; beep(150, 0.2, "sawtooth", 0.22); noise(0.25, 0.2, "highpass", 3000); spawnBlood(player.x, player.y, 2); }
+    evTimer = setTimeout(eventLoop, (low ? 11000 : 19000) + Math.random() * 12000);
   }
 
   // ---------------------------------------------------------------- Update
@@ -488,7 +612,6 @@
   function update(dt) {
     const now = performance.now(), dtSec = dt / 60, stunned = now < player.stunUntil;
 
-    // Entradas combinadas
     let ix = (pressed.right ? 1 : 0) - (pressed.left ? 1 : 0) + touch.dx + gp.x;
     let iy = (pressed.down ? 1 : 0) - (pressed.up ? 1 : 0) + touch.dy + gp.y;
     const sprintInput = pressed.sprint || gp.sprint || (Math.hypot(touch.dx, touch.dy) > 0.9);
@@ -499,22 +622,19 @@
       player.vx = ix; player.vy = iy;
       if (mag > 0.1) player.face = Math.atan2(iy, ix);
       sprinting = player.hasBoots && sprintInput && player.stamina > 1 && mag > 0.1;
-      if (sprinting) player.stamina = Math.max(0, player.stamina - 32 * dtSec);
+      if (sprinting) { player.stamina = Math.max(0, player.stamina - 32 * dtSec); runSprinted = true; }
       else player.stamina = Math.min(100, player.stamina + 15 * dtSec);
       const sp = PLAYER_SPEED * (sprinting ? SPRINT_MULT : 1) * dt;
       tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
     } else { player.vx = 0; player.vy = 0; player.stamina = Math.min(100, player.stamina + 20 * dtSec); }
 
-    // Pasos del jugador (más rápidos al correr con botas)
     const moving = (player.vx * player.vx + player.vy * player.vy) > 0.02 && !player.hidden && !stunned;
     if (moving) { if (now >= player.stepAt) { footstep(sprinting); player.stepAt = now + (sprinting ? 250 : 400); } }
     else player.stepAt = 0;
 
-    // Linterna / batería
     if (player.light && !player.hidden && player.battery > 0) player.battery = Math.max(0, player.battery - diff.batt * dtSec);
     updateBatt();
 
-    // Apagones de linterna (más probables con poca batería o monstruo cerca)
     if (player.light && now > glitchUntil) {
       const d2 = dist(enemy.x, enemy.y, player.x, player.y);
       const prob = 0.0015 + (player.battery < 30 ? 0.004 : 0) + (d2 < 200 ? 0.004 : 0);
@@ -526,26 +646,28 @@
     updatePrompt();
 
     if (!player.hidden) {
-      for (const k of keys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 10) { k.taken = true; collected = Math.min(KEY_COUNT, collected + 1); updateHud(); beep(880, 0.1, "triangle", 0.2); setTimeout(() => beep(1320, 0.12, "triangle", 0.2), 90); flashMsg(collected >= KEY_COUNT ? "¡Las 5 llaves! Corre a la puerta." : "Llave (" + collected + "/5)"); }
-      for (const k of masterKeys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 11) { k.taken = true; collected = Math.min(KEY_COUNT, collected + 2); updateHud(); beep(700, 0.1, "triangle", 0.22); setTimeout(() => beep(1050, 0.1, "triangle", 0.22), 80); setTimeout(() => beep(1400, 0.14, "triangle", 0.22), 160); flashMsg("¡LLAVE MAESTRA! (+2 llaves) → " + collected + "/5"); }
+      for (const k of keys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 10) { k.taken = true; collected = Math.min(KEY_COUNT, collected + 1); updateHud(); beep(880, 0.1, "triangle", 0.2); setTimeout(() => beep(1320, 0.12, "triangle", 0.2), 90); flashMsg(collected >= KEY_COUNT ? "¡Las 5 llaves! Ve a la puerta." : "Llave (" + collected + "/5)"); }
+      for (const k of masterKeys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 11) { k.taken = true; collected = Math.min(KEY_COUNT, collected + 2); updateHud(); beep(700, 0.1, "triangle", 0.22); setTimeout(() => beep(1050, 0.1, "triangle", 0.22), 80); setTimeout(() => beep(1400, 0.14, "triangle", 0.22), 160); flashMsg("¡LLAVE MAESTRA! (+2) → " + collected + "/5"); }
       for (const b of batteries) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 10) { b.taken = true; player.battery = Math.min(100, player.battery + 45); beep(520, 0.08, "square", 0.18); setTimeout(() => beep(760, 0.1, "square", 0.18), 70); flashMsg("Pila (+linterna)"); updateBatt(); }
       for (const b of boots) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 11) { b.taken = true; player.hasBoots = true; document.getElementById("stamWrap").style.display = "flex"; beep(300, 0.1, "square", 0.18); setTimeout(() => beep(450, 0.12, "square", 0.18), 80); flashMsg("¡Botas! Mantén Shift para correr"); }
       for (const dp of decoyPickups) if (!dp.taken && dist(player.x, player.y, dp.x, dp.y) < PLAYER_R + 11) { dp.taken = true; player.decoys += 2; beep(640, 0.09, "square", 0.16); flashMsg("Señuelos +2 (Q para lanzar)"); updateHud(); }
       for (const n of notes) if (!n.taken && dist(player.x, player.y, n.x, n.y) < PLAYER_R + 10) { n.taken = true; notesFound++; document.getElementById("noteCount").textContent = notesFound; beep(330, 0.12, "sine", 0.14); showNote(n.text); }
       for (const tr of traps) if (!tr.triggered && dist(player.x, player.y, tr.x, tr.y) < 16) { tr.triggered = true; player.stunUntil = now + 900; enemy.alertUntil = now + 4500; enemy.lureUntil = 0; enemy.chasing = true; enemy.repathT = 0; player.sanity = Math.max(0, player.sanity - 12); beep(140, 0.25, "sawtooth", 0.3); setTimeout(() => beep(90, 0.3, "sawtooth", 0.25), 120); flashMsg("¡TRAMPA! El ruido lo atrajo"); }
-      if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) { if (collected >= KEY_COUNT) { win(); return; } else flashMsg("Cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s)."); }
+      if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
+        if (collected >= KEY_COUNT) { if (floorIdx < FLOORS.length - 1) { descend(); return; } else { win(); return; } }
+        else flashMsg("Cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s).");
+      }
     }
 
-    // Señuelos activos expiran
     decoysActive = decoysActive.filter(d => d.until > now);
 
-    // Enemigo
     const dToP = dist(enemy.x, enemy.y, player.x, player.y);
     const lured = now < enemy.lureUntil, alerted = now < enemy.alertUntil;
     const wasChasing = enemy.chasing;
     const sight = (player.light ? diff.sight : diff.sightDark) + (sprinting ? 40 : 0);
     if (lured) enemy.chasing = true;
     else enemy.chasing = (!player.hidden && dToP < sight) || alerted;
+    if (enemy.chasing && !player.hidden && !lured) runChased = true;
     enemy.repathT -= dt;
     if (enemy.repathT <= 0 || (enemy.chasing && !wasChasing) || enemy.path.length === 0) { enemyRepath(); enemy.repathT = (enemy.chasing || lured) ? 22 : 70; }
     if (enemy.path.length) {
@@ -554,11 +676,9 @@
       enemy.x += edx / ed * esp; enemy.y += edy / ed * esp;
       if (ed < esp + 1) enemy.path.shift();
     }
-    // Huellas
     enemy.trailT -= dt;
     if (enemy.trailT <= 0) { enemy.trail.push({ x: enemy.x, y: enemy.y, t: now }); if (enemy.trail.length > 26) enemy.trail.shift(); enemy.trailT = 10; }
 
-    // Miedo y cordura
     fearPulse = player.hidden ? Math.max(0, 1 - dToP / 150) * 0.6 : Math.max(0, 1 - dToP / (diff.sight + 60));
     if (enemy.chasing && !player.hidden && !lured) fearPulse = Math.max(fearPulse, 0.45);
     if (fearPulse > 0.3 && !player.hidden) player.sanity = Math.max(0, player.sanity - diff.san * fearPulse * dtSec);
@@ -566,10 +686,7 @@
     if (player.sanity < 35 && Math.random() < 0.01) noise(0.5, 0.05 + (35 - player.sanity) / 35 * 0.08, "bandpass", 1800);
     updateSan();
 
-    if (!player.hidden && dToP < PLAYER_R + 13 && !lured) { lose(); return; }
-    // si está señuelado y te topa, igual te puede atrapar
-    if (!player.hidden && dToP < PLAYER_R + 11) { lose(); return; }
-
+    if (!player.hidden && dToP < PLAYER_R + 12) { lose(); return; }
     elapsed = (now - startTime) / 1000;
   }
 
@@ -578,29 +695,35 @@
     const now = performance.now();
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     let shx = 0, shy = 0;
-    if (running && player.sanity < 45) { const amp = (1 - player.sanity / 45) * 6; shx = (Math.random() - 0.5) * amp * 2; shy = (Math.random() - 0.5) * amp * 2; }
+    if (running && !paused && player.sanity < 45) { const amp = (1 - player.sanity / 45) * 6; shx = (Math.random() - 0.5) * amp * 2; shy = (Math.random() - 0.5) * amp * 2; }
     const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
     ctx.save(); ctx.translate(-camX + shx, -camY + shy);
 
+    const TH = THEMES[FLOORS[floorIdx].theme];
     const x0 = Math.max(0, Math.floor(camX / TILE) - 1), y0 = Math.max(0, Math.floor(camY / TILE) - 1);
     const x1 = Math.min(COLS, Math.ceil((camX + VIEW_W) / TILE) + 1), y1 = Math.min(ROWS, Math.ceil((camY + VIEW_H) / TILE) + 1);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const px = x * TILE, py = y * TILE, r = hash(x, y);
       if (grid[y][x] === 1) {
-        ctx.fillStyle = "#14161c"; ctx.fillRect(px, py, TILE, TILE);
-        ctx.fillStyle = "#20242e"; ctx.fillRect(px, py, TILE, 5);
-        ctx.fillStyle = "#0b0c10"; ctx.fillRect(px, py + TILE - 4, TILE, 4);
-        if (r > 0.82) { ctx.fillStyle = "rgba(60,50,45,0.25)"; ctx.fillRect(px + 6, py + 10 + r * 14, 10, 3); }
+        ctx.fillStyle = TH.wall; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = TH.wallTop; ctx.fillRect(px, py, TILE, 5);
+        ctx.fillStyle = TH.wallBot; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+        if (TH.decor === "books") {
+          for (let bi = 0; bi < 4; bi++) { const bh = 12 + ((hash(x * 4 + bi, y) * 16) | 0); ctx.fillStyle = BOOK_COLORS[(hash(x + bi, y * 3) * BOOK_COLORS.length) | 0]; ctx.fillRect(px + 4 + bi * 10, py + 8 + (TILE - 16 - bh), 8, bh); }
+          ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(px, py + TILE * 0.52, TILE, 2);
+        } else if (r > 0.82) { ctx.fillStyle = "rgba(60,50,45,0.25)"; ctx.fillRect(px + 6, py + 10 + r * 14, 10, 3); }
       } else {
-        const b = 34 + (r * 10 | 0);
-        ctx.fillStyle = "rgb(" + (b + 9) + "," + (b + 2) + "," + (b - 4) + ")"; ctx.fillRect(px, py, TILE, TILE);
+        const b = TH.fBase + (r * 10 | 0);
+        ctx.fillStyle = "rgb(" + (b + TH.fTint[0]) + "," + (b + TH.fTint[1]) + "," + (b + TH.fTint[2]) + ")"; ctx.fillRect(px, py, TILE, TILE);
         ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
         if (r > 0.6) { ctx.fillStyle = "rgba(0,0,0," + (0.06 + r * 0.1).toFixed(2) + ")"; ctx.fillRect(px + 4 + r * 20, py + 6 + r * 24, 3 + r * 4, 2 + r * 3); }
         if (r > 0.9) { ctx.fillStyle = "rgba(90,20,20,0.18)"; ctx.fillRect(px + 10, py + 8, 16, 5); }
       }
     }
 
-    // Huellas del monstruo (se desvanecen)
+    // Sangre (eventos)
+    for (const bd of bloodDecals) { ctx.save(); ctx.fillStyle = "rgba(110,12,16,0.5)"; ctx.beginPath(); ctx.ellipse(bd.x, bd.y, bd.r, bd.r * 0.7, bd.rot, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(70,6,10,0.5)"; ctx.beginPath(); ctx.arc(bd.x + bd.r * 0.7, bd.y + bd.r * 0.4, bd.r * 0.4, 0, 7); ctx.fill(); ctx.restore(); }
+
     for (const f of enemy.trail) { const age = (now - f.t) / 4000; if (age >= 1) continue; ctx.fillStyle = "rgba(30,10,14," + (0.5 * (1 - age)).toFixed(3) + ")"; ctx.beginPath(); ctx.ellipse(f.x - 3, f.y, 2.6, 4, 0, 0, 7); ctx.ellipse(f.x + 3, f.y, 2.6, 4, 0, 0, 7); ctx.fill(); }
 
     drawDoor();
@@ -619,46 +742,44 @@
     drawPlayer();
     ctx.restore();
 
-    // Iluminación (cono / círculo, con apagones)
     drawLighting(shx, shy, now);
 
-    // Viñeta de miedo / baja cordura
+    if (now < flashWhiteUntil) { ctx.fillStyle = "rgba(255,245,230,0.5)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+
     const px2 = VIEW_W / 2 + shx, py2 = VIEW_H / 2 + shy;
     const danger = Math.max(fearPulse, player.sanity < 45 ? (45 - player.sanity) / 45 * 0.7 : 0);
     if (danger > 0.05) { const vg = ctx.createRadialGradient(px2, py2, 60, px2, py2, Math.max(VIEW_W, VIEW_H) * 0.7); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(120,0,0," + (danger * 0.5).toFixed(3) + ")"); ctx.fillStyle = vg; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 
-    // Susto visual (silueta en el borde)
     if (now < scareUntil) { ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = "#000"; const sx = scareSide < 0 ? 20 : VIEW_W - 90; ctx.beginPath(); ctx.ellipse(sx, VIEW_H * 0.5, 45, 90, 0, 0, 7); ctx.fill(); ctx.fillStyle = "#c22"; ctx.beginPath(); ctx.arc(sx - 8 * scareSide, VIEW_H * 0.5 - 14, 4, 0, 7); ctx.arc(sx + 6 * scareSide, VIEW_H * 0.5 - 14, 4, 0, 7); ctx.fill(); ctx.restore(); }
 
-    // Escondido
     if (player.hidden) { ctx.fillStyle = "rgba(190,190,200,0.55)"; ctx.font = "13px Courier New"; ctx.textAlign = "center"; ctx.fillText("· escondido ·  (E para salir)", px2, py2 + BASE_VISION * 0.6 + 8); ctx.textAlign = "left"; }
 
-    // Minimapa (solo con linterna) + reloj
     const _pad = 10, _h = ROWS * 4;
     if (running && player.light) { drawMinimap(); drawClock(_pad + _h + 6); }
     else if (running) drawClock(_pad);
-
   }
 
   function drawLighting(shx, shy, now) {
     const cx = VIEW_W / 2 + shx, cy = VIEW_H / 2 + shy;
     const flick = 1 + Math.sin(now / 70) * 0.05 + (Math.random() - 0.5) * 0.05;
     const glitch = now < glitchUntil ? glitchLevel : 1;
+    const br = settings.bright;
     const battN = player.battery / 100;
-    const coneVision = BASE_VISION * 1.22 * flick * glitch * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
-    const hideVision = BASE_VISION * 0.82 * flick;
+    const coneVision = BASE_VISION * 1.22 * flick * glitch * br * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
+    const hideVision = BASE_VISION * 0.82 * flick * br;
+    const ambR = AMBIENT_R * br;
 
     mctx.globalCompositeOperation = "source-over"; mctx.fillStyle = "#000"; mctx.fillRect(0, 0, VIEW_W, VIEW_H);
     mctx.globalCompositeOperation = "lighter";
-    const ha = mctx.createRadialGradient(cx, cy, 0, cx, cy, AMBIENT_R); ha.addColorStop(0, "rgba(120,120,130,0.85)"); ha.addColorStop(1, "rgba(0,0,0,0)");
-    mctx.fillStyle = ha; mctx.beginPath(); mctx.arc(cx, cy, AMBIENT_R, 0, 7); mctx.fill();
+    const ha = mctx.createRadialGradient(cx, cy, 0, cx, cy, ambR); ha.addColorStop(0, "rgba(120,120,130,0.85)"); ha.addColorStop(1, "rgba(0,0,0,0)");
+    mctx.fillStyle = ha; mctx.beginPath(); mctx.arc(cx, cy, ambR, 0, 7); mctx.fill();
     if (player.hidden) {
-      const gr = mctx.createRadialGradient(cx, cy, AMBIENT_R * 0.4, cx, cy, hideVision);
+      const gr = mctx.createRadialGradient(cx, cy, ambR * 0.4, cx, cy, hideVision);
       gr.addColorStop(0, "rgba(255,250,235,1)"); gr.addColorStop(0.65, "rgba(230,224,210,0.6)"); gr.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = gr; mctx.beginPath(); mctx.arc(cx, cy, hideVision, 0, 7); mctx.fill();
     } else if (player.light && coneVision > 1) {
       mctx.save(); mctx.beginPath(); mctx.moveTo(cx, cy); mctx.arc(cx, cy, coneVision, player.face - CONE_HALF, player.face + CONE_HALF); mctx.closePath(); mctx.clip();
-      const gc = mctx.createRadialGradient(cx, cy, AMBIENT_R * 0.5, cx, cy, coneVision);
+      const gc = mctx.createRadialGradient(cx, cy, ambR * 0.5, cx, cy, coneVision);
       gc.addColorStop(0, "rgba(255,244,214,1)"); gc.addColorStop(0.55, "rgba(240,224,180,0.72)"); gc.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = gc; mctx.fillRect(cx - coneVision, cy - coneVision, coneVision * 2, coneVision * 2); mctx.restore();
     }
@@ -686,13 +807,13 @@
     ctx.beginPath(); ctx.arc(x - 4, y - 5, 2.3, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x + 4, y - 5, 2.3, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
   }
   function drawDoor() {
-    const open = collected >= KEY_COUNT; ctx.save();
+    const open = collected >= KEY_COUNT, last = floorIdx >= FLOORS.length - 1; ctx.save();
     if (open) { ctx.shadowColor = "rgba(90,220,90,0.7)"; ctx.shadowBlur = 20; }
     ctx.fillStyle = open ? "#2f7d32" : "#4a3118"; ctx.fillRect(door.x - 17, door.y - 22, 34, 44);
     ctx.fillStyle = open ? "#58c75c" : "#6b4420"; ctx.fillRect(door.x - 13, door.y - 18, 26, 36); ctx.restore();
     ctx.fillStyle = open ? "#1a3a1a" : "#2a1b0c"; ctx.fillRect(door.x - 11, door.y - 16, 10, 32); ctx.fillRect(door.x + 1, door.y - 16, 10, 32);
     ctx.fillStyle = open ? "#d6ffd6" : "#caa15a"; ctx.beginPath(); ctx.arc(door.x - 2, door.y, 2, 0, 7); ctx.fill();
-    if (open) { ctx.fillStyle = "#cfffcf"; ctx.font = "9px Courier New"; ctx.textAlign = "center"; ctx.fillText("SALIDA", door.x, door.y - 26); ctx.textAlign = "left"; }
+    if (open) { ctx.fillStyle = "#cfffcf"; ctx.font = "8px Courier New"; ctx.textAlign = "center"; ctx.fillText(last ? "SALIDA" : "BAJAR", door.x, door.y - 26); ctx.textAlign = "left"; }
   }
   function drawKey(k, t, master) {
     const g = 0.6 + Math.sin(t + k.x) * 0.4, col = master ? "#ffd24a" : "#ffcf4d";
@@ -776,22 +897,38 @@
   const elBatt = document.getElementById("battFill"), elSan = document.getElementById("sanFill"), elStam = document.getElementById("stamFill");
   const elPrompt = document.getElementById("prompt"), elNote = document.getElementById("note");
   let msgTimer = null, noteTimer = null;
-  function updateHud() { elKeyCount.textContent = collected; document.getElementById("decoyCount").textContent = player.decoys; }
+  function updateHud() { elKeyCount.textContent = collected; document.getElementById("decoyCount").textContent = player.decoys; document.getElementById("noteCount").textContent = notesFound; }
   function updateBatt() { const b = Math.max(0, player.battery); elBatt.style.width = b + "%"; elBatt.style.background = !player.light ? "#3a4048" : b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)"; }
   function updateSan() { const v = Math.max(0, player.sanity); elSan.style.width = v + "%"; elSan.style.background = v < 30 ? "linear-gradient(90deg,#7a2e8a,#c04bd0)" : "linear-gradient(90deg,#5a4a9a,#9a86d0)"; elStam.style.width = player.stamina + "%"; elStam.style.background = "linear-gradient(90deg,#8a6a2a,#d0b060)"; }
   function updatePrompt() { if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
   function flashMsg(txt) { elMsg.textContent = txt; elMsg.classList.add("show"); clearTimeout(msgTimer); msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1900); }
   function showNote(html) { elNote.innerHTML = "“" + html + "”"; elNote.classList.add("show"); clearTimeout(noteTimer); noteTimer = setTimeout(() => elNote.classList.remove("show"), 6500); }
-
-  // Récord (localStorage)
-  function bestKey() { return "lospasillos_best_" + diffName; }
-  function getBest() { try { const v = localStorage.getItem(bestKey()); return v ? parseFloat(v) : null; } catch (e) { return null; } }
-  function setBest(v) { try { localStorage.setItem(bestKey(), String(v)); } catch (e) {} }
   function fmt(sec) { const m = Math.floor(sec / 60), s = Math.floor(sec % 60); return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); }
-  function refreshBest() { const b = getBest(); document.getElementById("bestStart").textContent = b != null ? "Mejor tiempo (" + diff.label + "): " + fmt(b) : "Sin récord en " + diff.label + " todavía"; }
+
+  // Récords (tabla) + logros
+  function timesKey() { return "lospasillos_times_" + diffName; }
+  function getTimes() { try { return JSON.parse(localStorage.getItem(timesKey())) || []; } catch (e) { return []; } }
+  function addTime(v) { const a = getTimes(); a.push(v); a.sort((x, y) => x - y); try { localStorage.setItem(timesKey(), JSON.stringify(a.slice(0, 5))); } catch (e) {} }
+  function bestTime() { const a = getTimes(); return a.length ? a[0] : null; }
+  function refreshBest() { const b = bestTime(); document.getElementById("bestStart").textContent = b != null ? "Mejor tiempo (" + diff.label + "): " + fmt(b) : "Sin récord en " + diff.label + " todavía"; }
+
+  const ACHIEVEMENTS = [
+    { id: "escape", name: "Superviviente", desc: "Escapa del complejo" },
+    { id: "veloz", name: "Veloz", desc: "Escapa en menos de 3 minutos" },
+    { id: "sigiloso", name: "Fantasma", desc: "Escapa sin que te persiga nunca" },
+    { id: "apie", name: "A pie", desc: "Escapa sin correr ni una vez" },
+    { id: "archivista", name: "Archivista", desc: "Reúne todas las notas en una partida" },
+    { id: "pesadilla", name: "Pesadilla", desc: "Escapa en dificultad Pesadilla" },
+  ];
+  function getAch() { try { return JSON.parse(localStorage.getItem("lospasillos_ach")) || {}; } catch (e) { return {}; } }
+  function unlockAch(id) { const a = getAch(); if (a[id]) return false; a[id] = true; try { localStorage.setItem("lospasillos_ach", JSON.stringify(a)); } catch (e) {} return true; }
 
   const startScreen = document.getElementById("startScreen"), storyScreen = document.getElementById("storyScreen");
   const overScreen = document.getElementById("overScreen"), winScreen = document.getElementById("winScreen");
+  const tutScreen = document.getElementById("tutScreen"), optionsScreen = document.getElementById("optionsScreen");
+  const recordsScreen = document.getElementById("recordsScreen"), pauseScreen = document.getElementById("pauseScreen");
+  function hideAllScreens() { for (const s of [startScreen, storyScreen, overScreen, winScreen, tutScreen, optionsScreen, recordsScreen, pauseScreen]) s.classList.add("hidden"); }
+
   document.querySelectorAll(".diffBtn").forEach(b => b.addEventListener("click", () => {
     document.querySelectorAll(".diffBtn").forEach(x => x.classList.remove("selected")); b.classList.add("selected");
     diffName = b.dataset.diff; diff = DIFF[diffName]; refreshBest();
@@ -799,33 +936,110 @@
   document.getElementById("storyBtn").addEventListener("click", () => { startScreen.classList.add("hidden"); storyScreen.classList.remove("hidden"); });
   document.getElementById("storyClose").addEventListener("click", () => { storyScreen.classList.add("hidden"); startScreen.classList.remove("hidden"); });
 
-  function startGame() {
+  // Opciones
+  const optMusic = document.getElementById("optMusic"), optSfx = document.getElementById("optSfx"), optBright = document.getElementById("optBright");
+  function syncOptUI() { optMusic.value = Math.round(settings.music * 100); optSfx.value = Math.round(settings.sfx * 100); optBright.value = Math.round(settings.bright * 100); document.getElementById("optMusicVal").textContent = optMusic.value + "%"; document.getElementById("optSfxVal").textContent = optSfx.value + "%"; document.getElementById("optBrightVal").textContent = optBright.value + "%"; }
+  optMusic.addEventListener("input", () => { settings.music = optMusic.value / 100; document.getElementById("optMusicVal").textContent = optMusic.value + "%"; applyAudioSettings(); saveSettings(); });
+  optSfx.addEventListener("input", () => { settings.sfx = optSfx.value / 100; document.getElementById("optSfxVal").textContent = optSfx.value + "%"; applyAudioSettings(); if (actx) beep(600, 0.06, "square", 0.15); saveSettings(); });
+  optBright.addEventListener("input", () => { settings.bright = optBright.value / 100; document.getElementById("optBrightVal").textContent = optBright.value + "%"; saveSettings(); });
+  let optReturn = "start";
+  function openOptions(ret) { optReturn = ret; syncOptUI(); hideAllScreens(); optionsScreen.classList.remove("hidden"); }
+  document.getElementById("optionsBtn").addEventListener("click", () => openOptions("start"));
+  document.getElementById("optClose").addEventListener("click", () => { optionsScreen.classList.add("hidden"); (optReturn === "pause" ? pauseScreen : startScreen).classList.remove("hidden"); });
+
+  // Récords + logros
+  function openRecords() {
+    hideAllScreens(); recordsScreen.classList.remove("hidden");
+    document.getElementById("recTitle").textContent = "Mejores tiempos — " + diff.label;
+    const times = getTimes(), tbl = document.getElementById("recTable");
+    tbl.innerHTML = times.length ? times.map((t, i) => "<tr><td class='n'>" + (i + 1) + ".</td><td>" + fmt(t) + "</td></tr>").join("") : "<tr><td>Sin tiempos todavía</td></tr>";
+    const a = getAch(), al = document.getElementById("achList");
+    al.innerHTML = ACHIEVEMENTS.map(ac => "<div class='achItem" + (a[ac.id] ? "" : " locked") + "'><span class='nm'>" + ac.name + "</span><span class='ds'>" + ac.desc + "</span><span class='st'>" + (a[ac.id] ? "✓" : "") + "</span></div>").join("");
+  }
+  document.getElementById("recordsBtn").addEventListener("click", openRecords);
+  document.getElementById("recClose").addEventListener("click", () => { recordsScreen.classList.add("hidden"); startScreen.classList.remove("hidden"); });
+
+  // Tutorial
+  function tutSeen() { try { return localStorage.getItem("lospasillos_tut") === "1"; } catch (e) { return false; } }
+  function markTut() { try { localStorage.setItem("lospasillos_tut", "1"); } catch (e) {} }
+  let tutThen = null;
+  document.getElementById("howBtn").addEventListener("click", () => { tutThen = null; startScreen.classList.add("hidden"); tutScreen.classList.remove("hidden"); });
+  document.getElementById("tutClose").addEventListener("click", () => { markTut(); tutScreen.classList.add("hidden"); if (tutThen) { const f = tutThen; tutThen = null; f(); } else startScreen.classList.remove("hidden"); });
+
+  // Pausa
+  function togglePause() {
+    if (!running) return;
+    paused = !paused;
+    if (paused) { pauseScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; document.getElementById("touch").style.display = "none"; }
+    else { pauseScreen.classList.add("hidden"); document.getElementById("hud").style.display = "flex"; if ("ontouchstart" in window) document.getElementById("touch").style.display = "block"; last = performance.now(); }
+  }
+  document.getElementById("resumeBtn").addEventListener("click", () => { if (paused) togglePause(); });
+  document.getElementById("pauseOptBtn").addEventListener("click", () => openOptions("pause"));
+  document.getElementById("quitBtn").addEventListener("click", () => {
+    running = false; paused = false; hideAllScreens(); startScreen.classList.remove("hidden");
+    document.getElementById("hud").style.display = "none"; document.getElementById("touch").style.display = "none"; refreshBest();
+  });
+
+  function startBtnAction() {
     initAudio(); if (actx && actx.state === "suspended") actx.resume();
-    startScreen.classList.add("hidden"); storyScreen.classList.add("hidden"); overScreen.classList.add("hidden"); winScreen.classList.add("hidden");
-    elNote.classList.remove("show"); document.getElementById("noteCount").textContent = "0"; document.getElementById("stamWrap").style.display = "none";
+    const go = () => { hideAllScreens(); playCinematic(startGame); };
+    if (!tutSeen()) { tutThen = go; startScreen.classList.add("hidden"); tutScreen.classList.remove("hidden"); }
+    else go();
+  }
+  function startGame() {
+    hideAllScreens();
+    elNote.classList.remove("show");
     document.getElementById("hud").style.display = "flex";
-    if ("ontouchstart" in window) document.getElementById("touch").style.display = "block"; // restaurar controles tactiles al empezar
-    setup(); updateBatt(); updateSan(); running = true; last = performance.now();
-    if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop();
+    if ("ontouchstart" in window) document.getElementById("touch").style.display = "block";
+    newRun(); running = true; paused = false; last = performance.now();
+    if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop(); if (!evTimer) eventLoop();
+  }
+  function descend() {
+    running = false; floorIdx++;
+    const fl = FLOORS[floorIdx];
+    const scenes = [{
+      dur: 4600, text: "Bajas más profundo… " + fl.name + ".",
+      onEnter() { beep(130, 0.4, "sine", 0.12); noise(0.7, 0.1, "lowpass", 140); },
+      draw(p, now) {
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        const cx = VIEW_W / 2, cy = VIEW_H * 0.3;
+        for (let i = 0; i < 9; i++) { const f = i / 9, yy = cy + f * VIEW_H * 0.5, ww = 150 * (1 - f * 0.7); ctx.fillStyle = "rgba(" + (40 - f * 30) + "," + (38 - f * 28) + "," + (34 - f * 26) + ",1)"; ctx.fillRect(cx - ww / 2, yy, ww, 16); }
+        const g = ctx.createRadialGradient(cx, VIEW_H * 0.75, 0, cx, VIEW_H * 0.75, 180); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.9)"); ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      }
+    }];
+    playCinematic(() => {
+      buildFloor(false); running = true; paused = false; last = performance.now();
+      document.getElementById("hud").style.display = "flex";
+      if ("ontouchstart" in window) document.getElementById("touch").style.display = "block";
+      flashMsg("Piso " + (floorIdx + 1) + ": " + fl.name);
+    }, scenes);
   }
   function lose() {
     running = false; fearPulse = 1;
     beep(70, 0.6, "sawtooth", 0.35); setTimeout(() => beep(42, 0.9, "sawtooth", 0.3), 80); noise(0.6, 0.3, "highpass", 1200);
-    document.getElementById("overText").textContent = "Reuniste " + collected + " de " + KEY_COUNT + " llaves antes de que te alcanzara.";
-    playCinematic(() => overScreen.classList.remove("hidden"), CINE_LOSE);
+    document.getElementById("overText").textContent = "Caíste en el piso " + (floorIdx + 1) + " (" + FLOORS[floorIdx].name + "). Reuniste " + collected + " de " + KEY_COUNT + " llaves.";
+    playCinematic(() => { hideAllScreens(); overScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, CINE_LOSE);
   }
   function win() {
-    running = false; const prev = getBest();
-    if (prev == null || elapsed < prev) { setBest(elapsed); newRecord = true; }
+    running = false;
+    const allNotes = notesPlaced > 0 && notesFound >= notesPlaced;
+    addTime(elapsed); const prev = getTimes()[1] != null ? getTimes()[1] : null;
+    newRecord = bestTime() != null && Math.abs(bestTime() - elapsed) < 0.001 && getTimes().length >= 1 && elapsed <= getTimes()[0];
+    // logros
+    newAch = [];
+    const checks = [["escape", true], ["veloz", elapsed < 180], ["sigiloso", !runChased], ["apie", !runSprinted], ["archivista", allNotes], ["pesadilla", diffName === "pesadilla"]];
+    for (const [id, ok] of checks) if (ok && unlockAch(id)) { const a = ACHIEVEMENTS.find(x => x.id === id); if (a) newAch.push(a.name); }
     beep(660, 0.15, "triangle", 0.25); setTimeout(() => beep(880, 0.15, "triangle", 0.25), 140); setTimeout(() => beep(1180, 0.3, "triangle", 0.25), 300);
-    document.getElementById("winText").innerHTML = "Escapaste en <span class='hi'>" + fmt(elapsed) + "</span> (" + diff.label + ")." + (notesFound ? " Reuniste " + notesFound + " nota(s)." : "") + (newRecord ? "<br><b style='color:#7fa'>¡NUEVO RÉCORD!</b>" : (prev != null ? "<br>Mejor: " + fmt(prev) : ""));
-    playCinematic(() => winScreen.classList.remove("hidden"), CINE_WIN);
+    const b = bestTime();
+    let txt = "Escapaste del complejo en <span class='hi'>" + fmt(elapsed) + "</span> (" + diff.label + ").";
+    if (allNotes) txt += "<br><b style='color:#c9a0ff'>Reuniste TODAS las notas: descubriste la verdad.</b>";
+    else if (notesFound) txt += " Reuniste " + notesFound + " nota(s).";
+    txt += (newRecord ? "<br><b style='color:#7fa'>¡NUEVO RÉCORD!</b>" : (b != null ? "<br>Mejor: " + fmt(b) : ""));
+    if (newAch.length) txt += "<br><span style='color:#ffcf4d'>Logro(s): " + newAch.join(", ") + "</span>";
+    document.getElementById("winText").innerHTML = txt;
+    playCinematic(() => { hideAllScreens(); winScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, allNotes ? CINE_WIN_SECRET : CINE_WIN);
   }
-  document.getElementById("startBtn").addEventListener("click", () => {
-    initAudio(); if (actx && actx.state === "suspended") actx.resume();
-    startScreen.classList.add("hidden");
-    playCinematic(startGame);
-  });
+  document.getElementById("startBtn").addEventListener("click", startBtnAction);
   document.getElementById("retryBtn").addEventListener("click", startGame);
   document.getElementById("againBtn").addEventListener("click", startGame);
 
@@ -850,7 +1064,7 @@
         const vx = VIEW_W / 2, vy = VIEW_H * 0.46;
         ctx.strokeStyle = "rgba(70,64,56,0.55)"; ctx.lineWidth = 1.5;
         for (const c of [[0, 0], [VIEW_W, 0], [0, VIEW_H], [VIEW_W, VIEW_H]]) { ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.lineTo(vx, vy); ctx.stroke(); }
-        for (let i = 1; i <= 7; i++) { const f = Math.pow(i / 8, 1.5); const x0 = vx * (1 - f), x1 = vx + (VIEW_W - vx) * f, y0 = vy * (1 - f), y1 = vy + (VIEW_H - vy) * f; ctx.globalAlpha = 0.35 * (1 - f) + 0.08; ctx.strokeRect(x0, y0, VIEW_W - x0 - x0, VIEW_H - y0 - y0); }
+        for (let i = 1; i <= 7; i++) { const f = Math.pow(i / 8, 1.5); const x0 = vx * (1 - f), y0 = vy * (1 - f); ctx.globalAlpha = 0.35 * (1 - f) + 0.08; ctx.strokeRect(x0, y0, VIEW_W - x0 - x0, VIEW_H - y0 - y0); }
         ctx.globalAlpha = 1;
         const g = ctx.createRadialGradient(vx, vy, 0, vx, vy, 130); g.addColorStop(0, "rgba(120,110,90,0.22)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
       } },
@@ -865,7 +1079,7 @@
         ctx.beginPath(); ctx.ellipse(ex - sp, ey, 11, h, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(ex + sp, ey, 11, h, 0, 0, 7); ctx.fill(); ctx.restore();
         if (h > 4) { ctx.fillStyle = "#200"; ctx.beginPath(); ctx.arc(ex - sp, ey, 3.2, 0, 7); ctx.arc(ex + sp, ey, 3.2, 0, 7); ctx.fill(); }
       } },
-    { dur: 7000, text: "Sellaron la salida con cinco cerraduras y lanzaron las llaves a los corredores.",
+    { dur: 7000, text: "Sellaron cada piso con cinco cerraduras y lanzaron las llaves a los corredores.",
       onEnter() { beep(260, 0.12, "square", 0.14); setTimeout(() => beep(200, 0.14, "square", 0.12), 170); },
       draw(p, now) {
         const dx = VIEW_W / 2, dy = VIEW_H * 0.45;
@@ -888,7 +1102,7 @@
         }
         ctx.fillStyle = "#333"; ctx.fillRect(cx - 10, cy - 6, 20, 12);
       } },
-    { dur: 6400, text: "Reúne las cinco llaves. Apaga la luz cuando lo sientas cerca. Escapa.",
+    { dur: 6400, text: "Baja piso por piso. Apaga la luz cuando lo sientas cerca. Escapa.",
       onEnter() { beep(300, 0.1, "triangle", 0.12); setTimeout(() => beep(450, 0.1, "triangle", 0.12), 140); setTimeout(() => beep(600, 0.25, "triangle", 0.12), 300); },
       draw(p, now) {
         const a = Math.min(1, p * 1.8), flick = Math.random() < 0.1 ? 0.5 : 1;
@@ -922,6 +1136,16 @@
         ctx.fillStyle = "#0a0a0d"; ctx.beginPath(); ctx.arc(VIEW_W * 0.5, VIEW_H * 0.6, 11, 0, 7); ctx.fill(); ctx.fillRect(VIEW_W * 0.5 - 8, VIEW_H * 0.6, 16, 36);
       } },
   ];
+  const CINE_WIN_SECRET = CINE_WIN.concat([
+    { dur: 6200, text: "Pero las notas decían la verdad: no estaba muerto. Solo esperaba. Y ahora sabe tu nombre.",
+      onEnter() { growl(0.3, -0.3); setTimeout(() => growl(0.3, 0.4), 400); },
+      draw(p, now) {
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        const ey = VIEW_H * 0.44, sp = 30, a = Math.min(1, p * 1.5);
+        ctx.save(); ctx.globalAlpha = a; ctx.shadowColor = "#f00"; ctx.shadowBlur = 34; ctx.fillStyle = "#ff2222";
+        ctx.beginPath(); ctx.arc(VIEW_W / 2 - sp, ey, 9, 0, 7); ctx.arc(VIEW_W / 2 + sp, ey, 9, 0, 7); ctx.fill(); ctx.restore();
+      } },
+  ]);
   const CINE_LOSE = [
     { dur: 1100, text: "",
       onEnter() { growl(0.4, 0); noise(0.4, 0.25, "highpass", 1400); },
@@ -950,7 +1174,7 @@
     cine = { t0: performance.now(), lastIdx: -1, scenes: scenes || CINE_SCENES, onDone };
     document.getElementById("cineSkip").style.display = "block";
     document.getElementById("hud").style.display = "none";
-    document.getElementById("touch").style.display = "none"; // ocultar joystick y botones (solo queda SALTAR)
+    document.getElementById("touch").style.display = "none";
   }
   function endCinematic() {
     if (!cine) return; const cb = cine.onDone; cine = null;
@@ -978,11 +1202,12 @@
     const dt = Math.min(3, (now - last) / 16.666); last = now;
     pollGamepad();
     if (cine) { drawCinematic(now); requestAnimationFrame(frame); return; }
-    if (running) update(dt);
+    if (running && !paused) update(dt);
     draw();
     requestAnimationFrame(frame);
   }
-  refreshBest(); setup(); requestAnimationFrame(frame);
+  document.getElementById("hud").style.display = "none";
+  refreshBest(); buildFloor(true); requestAnimationFrame(frame);
 })();
 </script>
 </body>
