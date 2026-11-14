@@ -362,7 +362,7 @@
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0 };
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0;
-  let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false, roomDoors = [];
+  let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false, roomDoors = [], furniture = [], furnSet = new Set();
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
   let collected = 0, notesFound = 0, notesPlaced = 0;
   let running = false, paused = false, startTime = 0, elapsed = 0, fearPulse = 0;
@@ -423,6 +423,44 @@
     notesPlaced += notes.length;
     lockers = pickSpread(nearOrder, N_LOCKERS, 4, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, gx: x, gy: y }; });
     traps = pickSpread(nearOrder, N_TRAPS, 2, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, triggered: false }; });
+
+    // Mobiliario dentro de las habitaciones, según el escenario
+    furniture = []; furnSet = new Set();
+    const tema = FLOORS[floorIdx].theme;
+    for (const r of rooms) {
+      const celdas = [];
+      for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
+        if (used.has(x + "," + y) || grid[y][x] !== 0) continue;
+        if ((r.doors || []).some(d => Math.abs(d.gx - x) + Math.abs(d.gy - y) <= 1)) continue;  // deja libre el vano
+        celdas.push([x, y]);
+      }
+      shuffle(celdas);
+      const cuantos = Math.min(celdas.length, 2 + ((Math.random() * 3) | 0));
+      for (let i = 0; i < cuantos; i++) {
+        const gx = celdas[i][0], gy = celdas[i][1], z = Math.random();
+        const tipo = tema === "enfermeria" ? (z < 0.65 ? "camilla" : "mesa")
+                   : tema === "library"    ? (z < 0.6 ? "mesa" : "caja")
+                   :                         (z < 0.6 ? "caja" : "mesa");
+        const cc = cellCenter(gx, gy);
+        furniture.push({ x: cc.x, y: cc.y, gx: gx, gy: gy, type: tipo, rot: Math.random() < 0.5 ? 0 : 1, seed: Math.random() });
+        used.add(gx + "," + gy);
+      }
+    }
+    // Ningún mueble puede dejar una zona incomunicada
+    const pasable = () => {
+      const bl = new Set(furniture.map(f => f.gx + "," + f.gy));
+      const d = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
+      d[1][1] = 0; const q = [[1, 1]]; let h = 0;
+      while (h < q.length) { const c = q[h++];
+        for (const dd of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = c[0] + dd[0], ny = c[1] + dd[1];
+          if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || grid[ny][nx] !== 0 || d[ny][nx] >= 0 || bl.has(nx + "," + ny)) continue;
+          d[ny][nx] = d[c[1]][c[0]] + 1; q.push([nx, ny]); } }
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++)
+        if (grid[y][x] === 0 && !bl.has(x + "," + y) && d[y][x] < 0) return false;
+      return true;
+    };
+    while (furniture.length && !pasable()) furniture.pop();
+    furnSet = new Set(furniture.map(f => f.gx + "," + f.gy));
 
     let es = cells[(cells.length * 0.6) | 0]; for (const [x, y] of cells) if (sd[y][x] > ROWS * 0.6) { es = [x, y]; break; }
     const ec = cellCenter(es[0], es[1]);
@@ -720,9 +758,13 @@
   }
 
   // ---------------------------------------------------------------- Update
+  function solidAt(px, py) {   // pared o mueble
+    if (isWall(px, py)) return true;
+    return furnSet.has(Math.floor(px / TILE) + "," + Math.floor(py / TILE));
+  }
   function tryMove(obj, nx, ny, r) {
-    if (!isWall(nx + (obj.vx > 0 ? r : -r), obj.y) && !isWall(nx + (obj.vx > 0 ? r : -r), obj.y - r + 1) && !isWall(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) obj.x = nx;
-    if (!isWall(obj.x, ny + (obj.vy > 0 ? r : -r)) && !isWall(obj.x - r + 1, ny + (obj.vy > 0 ? r : -r)) && !isWall(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) obj.y = ny;
+    if (!solidAt(nx + (obj.vx > 0 ? r : -r), obj.y) && !solidAt(nx + (obj.vx > 0 ? r : -r), obj.y - r + 1) && !solidAt(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) obj.x = nx;
+    if (!solidAt(obj.x, ny + (obj.vy > 0 ? r : -r)) && !solidAt(obj.x - r + 1, ny + (obj.vy > 0 ? r : -r)) && !solidAt(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) obj.y = ny;
   }
   // ¿El monstruo puede VERTE? (no hay pared entre los dos)
   function hasLineOfSight(x1, y1, x2, y2) {
@@ -738,7 +780,7 @@
     const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     const dmap = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
     dmap[ey][ex] = 0; const q = [[ex, ey]]; let h = 0;
-    while (h < q.length) { const [x, y] = q[h++]; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && dmap[ny][nx] === -1) { dmap[ny][nx] = dmap[y][x] + 1; prev[ny][nx] = [x, y]; q.push([nx, ny]); } } }
+    while (h < q.length) { const [x, y] = q[h++]; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && dmap[ny][nx] === -1 && !furnSet.has(nx + "," + ny)) { dmap[ny][nx] = dmap[y][x] + 1; prev[ny][nx] = [x, y]; q.push([nx, ny]); } } }
     let tx, ty;
     if (now < enemy.lureUntil && enemy.lurePos) { tx = Math.floor(enemy.lurePos.x / TILE); ty = Math.floor(enemy.lurePos.y / TILE); }
     else if (enemy.chasing || now < enemy.alertUntil) { tx = Math.floor(player.x / TILE); ty = Math.floor(player.y / TILE); }
@@ -1041,6 +1083,7 @@
 
     for (const f of enemy.trail) { const age = (now - f.t) / 4000; if (age >= 1) continue; ctx.fillStyle = "rgba(30,10,14," + (0.5 * (1 - age)).toFixed(3) + ")"; ctx.beginPath(); ctx.ellipse(f.x - 3, f.y, 2.6, 4, 0, 0, 7); ctx.ellipse(f.x + 3, f.y, 2.6, 4, 0, 0, 7); ctx.fill(); }
 
+    for (const f of furniture) drawFurniture(f);
     for (const rd of roomDoors) drawRoomDoor(rd);
     for (const w of wallLights) drawWallLight(w);
     drawGenerator();
@@ -1199,6 +1242,50 @@
     ctx.save(); ctx.globalAlpha = tr.triggered ? 1 : 0.65; ctx.strokeStyle = tr.triggered ? "#b11" : "#6a6a6a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tr.x, tr.y, 9, 0, 7); ctx.stroke();
     ctx.fillStyle = tr.triggered ? "#7a2222" : "#8a8a8a";
     for (let a = 0; a < 8; a++) { const ang = a / 8 * Math.PI * 2, ix = tr.x + Math.cos(ang) * 6, iy = tr.y + Math.sin(ang) * 6; ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(tr.x + Math.cos(ang - 0.2) * 10, tr.y + Math.sin(ang - 0.2) * 10); ctx.lineTo(tr.x + Math.cos(ang + 0.2) * 10, tr.y + Math.sin(ang + 0.2) * 10); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+  function drawFurniture(f) {
+    const x = f.x, y = f.y, h = f.rot === 1;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.38)";                                        // sombra en el suelo
+    ctx.beginPath(); ctx.ellipse(x, y + 8, h ? 20 : 13, h ? 11 : 17, 0, 0, 7); ctx.fill();
+    if (f.type === "camilla") {                                                // CAMILLA de enfermería
+      const w = h ? 40 : 19, d = h ? 19 : 40;
+      ctx.fillStyle = "#7f8b92"; ctx.fillRect(x - w / 2, y - d / 2, w, d);
+      ctx.fillStyle = "#ccd6da"; ctx.fillRect(x - w / 2 + 2, y - d / 2 + 2, w - 4, d - 4);
+      ctx.fillStyle = "#aab8bf";                                               // almohada
+      if (h) ctx.fillRect(x - w / 2 + 3, y - d / 2 + 3, 10, d - 6); else ctx.fillRect(x - w / 2 + 3, y - d / 2 + 3, w - 6, 10);
+      ctx.fillStyle = "#9fb0b8";                                               // sábana doblada
+      if (h) ctx.fillRect(x + 2, y - d / 2 + 3, w / 2 - 5, d - 6); else ctx.fillRect(x - w / 2 + 3, y + 2, w - 6, d / 2 - 5);
+      ctx.strokeStyle = "#5d6b72"; ctx.lineWidth = 1.5;                        // barandillas
+      if (h) { ctx.strokeRect(x - w / 2, y - d / 2 - 2, w, 3); ctx.strokeRect(x - w / 2, y + d / 2 - 1, w, 3); }
+      else { ctx.strokeRect(x - w / 2 - 2, y - d / 2, 3, d); ctx.strokeRect(x + w / 2 - 1, y - d / 2, 3, d); }
+      ctx.fillStyle = "#2b3134";                                               // ruedas
+      const rue = h ? [[-w / 2 + 5, d / 2], [w / 2 - 5, d / 2], [-w / 2 + 5, -d / 2], [w / 2 - 5, -d / 2]]
+                    : [[-w / 2, -d / 2 + 5], [w / 2, -d / 2 + 5], [-w / 2, d / 2 - 5], [w / 2, d / 2 - 5]];
+      for (const r of rue) { ctx.beginPath(); ctx.arc(x + r[0], y + r[1], 2.3, 0, 7); ctx.fill(); }
+      if (f.seed > 0.6) { ctx.fillStyle = "rgba(105,18,18,0.32)"; ctx.beginPath(); ctx.ellipse(x + 3, y + 2, 7, 5, 0, 0, 7); ctx.fill(); }
+    } else if (f.type === "mesa") {                                            // MESA
+      const w = h ? 38 : 27, d = h ? 25 : 36;
+      ctx.fillStyle = "#241a0f"; ctx.fillRect(x - w / 2 - 1, y - d / 2 - 1, w + 2, d + 2);
+      ctx.fillStyle = "#6d4c2a"; ctx.fillRect(x - w / 2, y - d / 2, w, d);
+      ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(x - w / 2, y - d / 2, w, 3);
+      ctx.strokeStyle = "rgba(0,0,0,0.22)"; ctx.lineWidth = 1;                 // vetas del tablero
+      for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(x - w / 2 + 2, y - d / 2 + i * d / 4); ctx.lineTo(x + w / 2 - 2, y - d / 2 + i * d / 4); ctx.stroke(); }
+      ctx.fillStyle = "#33240f";                                               // patas
+      for (const o of [[-w / 2 + 2, -d / 2 + 2], [w / 2 - 5, -d / 2 + 2], [-w / 2 + 2, d / 2 - 5], [w / 2 - 5, d / 2 - 5]]) ctx.fillRect(x + o[0], y + o[1], 3, 3);
+      if (f.seed > 0.55) { ctx.fillStyle = "#cfc6a8"; ctx.fillRect(x - 6, y - 4, 11, 8); ctx.strokeStyle = "rgba(90,80,55,0.7)"; ctx.beginPath(); ctx.moveTo(x - 4, y - 1); ctx.lineTo(x + 3, y - 1); ctx.stroke(); } // papeles
+    } else {                                                                   // CAJA
+      const s2 = 26 + ((f.seed * 8) | 0);
+      if (f.seed > 0.65) { ctx.fillStyle = "#3d2a12"; ctx.fillRect(x - s2 / 2 + 5, y - s2 / 2 - 9, s2 - 10, 11); ctx.fillStyle = "#5c4120"; ctx.fillRect(x - s2 / 2 + 7, y - s2 / 2 - 7, s2 - 14, 7); }
+      ctx.fillStyle = "#3f2c13"; ctx.fillRect(x - s2 / 2, y - s2 / 2, s2, s2);
+      ctx.fillStyle = "#6b4d26"; ctx.fillRect(x - s2 / 2 + 2, y - s2 / 2 + 2, s2 - 4, s2 - 4);
+      ctx.strokeStyle = "#35230f"; ctx.lineWidth = 2;                          // listones en aspa
+      ctx.beginPath(); ctx.moveTo(x - s2 / 2 + 3, y - s2 / 2 + 3); ctx.lineTo(x + s2 / 2 - 3, y + s2 / 2 - 3);
+      ctx.moveTo(x + s2 / 2 - 3, y - s2 / 2 + 3); ctx.lineTo(x - s2 / 2 + 3, y + s2 / 2 - 3); ctx.stroke();
+      ctx.strokeRect(x - s2 / 2 + 2, y - s2 / 2 + 2, s2 - 4, s2 - 4);
+      ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fillRect(x - s2 / 2 + 2, y - s2 / 2 + 2, s2 - 4, 2);
+    }
     ctx.restore();
   }
   function drawRoomDoor(d) {
