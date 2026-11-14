@@ -2,20 +2,29 @@
 
 Juego de terror 2D con vista cenital. Despiertas en un complejo a oscuras y
 debes encontrar las **5 llaves** escondidas en los pasillos para abrir la
-**puerta** y escapar... mientras algo te persigue en la oscuridad.
+**puerta** y escapar... mientras algo te caza en la oscuridad (y la luz lo atrae).
 
 ## Cómo jugar
 
 Abre `index.html` en cualquier navegador (no requiere instalación).
 
-- **Moverse:** WASD o flechas (en móvil, joystick en pantalla)
-- **Objetivo:** recoge las 5 llaves y llega a la puerta
-- **Cuidado:** el monstruo te detecta si te acercas. Si te atrapa, pierdes.
+- **Mover:** WASD / flechas (o joystick en móvil, o **control/gamepad** 🎮)
+- **Shift:** correr (necesitas las botas)
+- **F:** encender / apagar la linterna
+- **E:** esconderte en un armario
+- **Q:** lanzar un señuelo para distraer al monstruo
+- **Objetivo:** reúne las 5 llaves y llega a la puerta sin que te atrape
 
 ## Características
 
 - Laberinto generado al azar en cada partida
-- Oscuridad con linterna (campo de visión limitado)
-- Enemigo con IA que patrulla y persigue (pathfinding BFS)
-- Sonido ambiental y latido que se acelera con el peligro (WebAudio, sin archivos)
-- Cronómetro y pantallas de inicio / victoria / derrota
+- Linterna direccional (cono 110°) con parpadeos y apagones; se gasta con pilas
+- **La luz atrae al monstruo**: apágala para pasar desapercibido
+- Enemigo con IA (pathfinding BFS), huellas que deja al caminar y gruñido direccional
+- Barra de **cordura**: baja con el miedo, distorsiona la pantalla; se recupera escondido
+- **Sustos** y sonidos ambientales aleatorios + jumpscare al morir
+- Armarios para esconderte · trampas que lo atraen
+- Ítems: pilas, **llave maestra** (+2), **señuelos** y **botas** (correr)
+- 3 dificultades (Fácil / Normal / Pesadilla)
+- Récord de mejor tiempo guardado por dificultad (localStorage)
+- Pantalla de historia y créditos · minimapa con pistas · soporte de gamepad
