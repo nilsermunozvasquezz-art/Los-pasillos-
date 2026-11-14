@@ -832,7 +832,7 @@
   // ---------------------------------------------------------------- Cinemática
   function drawMiniKey(x, y) { ctx.save(); ctx.shadowColor = "rgba(255,207,77,0.8)"; ctx.shadowBlur = 12; ctx.fillStyle = "#ffcf4d"; ctx.beginPath(); ctx.arc(x - 4, y, 4, 0, 7); ctx.fill(); ctx.fillRect(x - 1, y - 1.5, 10, 3); ctx.fillRect(x + 6, y - 1.5, 2, 4); ctx.restore(); }
   const CINE_SCENES = [
-    { dur: 4200, text: "El complejo subterráneo llevaba años sellado.",
+    { dur: 5800, text: "El complejo subterráneo llevaba años sellado.",
       onEnter() { noise(0.6, 0.1, "lowpass", 120); beep(80, 0.4, "sine", 0.1); },
       draw(p, now) {
         const lx = VIEW_W / 2 + Math.sin(now / 700) * 60, ly = VIEW_H * 0.26;
@@ -844,7 +844,7 @@
         ctx.fillStyle = "rgba(18,18,18,0.95)"; ctx.beginPath(); ctx.ellipse(lx, ly - 6, 15, 8, 0, 0, 7); ctx.fill();
         ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(lx, ly + 2, 4 * flick + 1, 0, 7); ctx.fill();
       } },
-    { dur: 4600, text: "Nadie recordaba qué se investigaba en sus pasillos sin ventanas.",
+    { dur: 6400, text: "Nadie recordaba qué se investigaba en sus pasillos sin ventanas.",
       onEnter() { noise(0.7, 0.07, "bandpass", 500); },
       draw(p, now) {
         const vx = VIEW_W / 2, vy = VIEW_H * 0.46;
@@ -854,7 +854,7 @@
         ctx.globalAlpha = 1;
         const g = ctx.createRadialGradient(vx, vy, 0, vx, vy, 130); g.addColorStop(0, "rgba(120,110,90,0.22)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
       } },
-    { dur: 4600, text: "Hasta que algo, en la oscuridad, aprendió a seguir la luz.",
+    { dur: 6200, text: "Hasta que algo, en la oscuridad, aprendió a seguir la luz.",
       onEnter() { growl(0.32, 0); },
       draw(p, now) {
         const ex = VIEW_W / 2, ey = VIEW_H * 0.42, sp = 30;
@@ -865,7 +865,7 @@
         ctx.beginPath(); ctx.ellipse(ex - sp, ey, 11, h, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(ex + sp, ey, 11, h, 0, 0, 7); ctx.fill(); ctx.restore();
         if (h > 4) { ctx.fillStyle = "#200"; ctx.beginPath(); ctx.arc(ex - sp, ey, 3.2, 0, 7); ctx.arc(ex + sp, ey, 3.2, 0, 7); ctx.fill(); }
       } },
-    { dur: 4800, text: "Sellaron la salida con cinco cerraduras y lanzaron las llaves a los corredores.",
+    { dur: 7000, text: "Sellaron la salida con cinco cerraduras y lanzaron las llaves a los corredores.",
       onEnter() { beep(260, 0.12, "square", 0.14); setTimeout(() => beep(200, 0.14, "square", 0.12), 170); },
       draw(p, now) {
         const dx = VIEW_W / 2, dy = VIEW_H * 0.45;
@@ -876,7 +876,7 @@
         const kp = Math.max(0, p - 0.45) / 0.55;
         for (let i = 0; i < 5; i++) { const ang = (i / 5) * Math.PI * 2 - Math.PI / 2; const r = kp * Math.max(VIEW_W, VIEW_H) * 0.55; ctx.save(); ctx.globalAlpha = 1 - kp * 0.4; drawMiniKey(dx + Math.cos(ang) * r, dy + Math.sin(ang) * r); ctx.restore(); }
       } },
-    { dur: 4200, text: "Ahora despiertas dentro. Una linterna moribunda es todo lo que tienes.",
+    { dur: 6400, text: "Ahora despiertas dentro. Una linterna moribunda es todo lo que tienes.",
       onEnter() { beep(900, 0.03, "square", 0.12); setTimeout(() => noise(0.12, 0.1, "highpass", 3000), 40); },
       draw(p, now) {
         const cx = VIEW_W * 0.5, cy = VIEW_H * 0.62, on = p > 0.2 && !(p < 0.3 && Math.random() < 0.4);
@@ -888,7 +888,7 @@
         }
         ctx.fillStyle = "#333"; ctx.fillRect(cx - 10, cy - 6, 20, 12);
       } },
-    { dur: 4400, text: "Reúne las cinco llaves. Apaga la luz cuando lo sientas cerca. Escapa.",
+    { dur: 6400, text: "Reúne las cinco llaves. Apaga la luz cuando lo sientas cerca. Escapa.",
       onEnter() { beep(300, 0.1, "triangle", 0.12); setTimeout(() => beep(450, 0.1, "triangle", 0.12), 140); setTimeout(() => beep(600, 0.25, "triangle", 0.12), 300); },
       draw(p, now) {
         const a = Math.min(1, p * 1.8), flick = Math.random() < 0.1 ? 0.5 : 1;
@@ -897,7 +897,7 @@
       } },
   ];
   const CINE_WIN = [
-    { dur: 3000, text: "Las cinco llaves giran. La puerta cede.",
+    { dur: 4400, text: "Las cinco llaves giran. La puerta cede.",
       onEnter() { beep(500, 0.1, "triangle", 0.12); setTimeout(() => beep(700, 0.12, "triangle", 0.12), 120); },
       draw(p, now) {
         ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -910,7 +910,7 @@
         const walk = Math.min(1, p * 1.2), px = dx - 130 + walk * 120, s = 1 - walk * 0.45;
         ctx.save(); ctx.globalAlpha = 1 - walk * 0.5; ctx.fillStyle = "#0a0a0a"; ctx.beginPath(); ctx.arc(px, dy + 6, 12 * s, 0, 7); ctx.fill(); ctx.fillRect(px - 7 * s, dy + 6, 14 * s, 34 * s); ctx.restore();
       } },
-    { dur: 3200, text: "El aire frío de la superficie. Escapaste… por ahora.",
+    { dur: 5000, text: "El aire frío de la superficie. Escapaste… por ahora.",
       onEnter() { beep(660, 0.15, "triangle", 0.14); setTimeout(() => beep(990, 0.25, "triangle", 0.12), 160); },
       draw(p, now) {
         const g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
@@ -926,7 +926,7 @@
     { dur: 1100, text: "",
       onEnter() { growl(0.4, 0); noise(0.4, 0.25, "highpass", 1400); },
       draw(p, now) { ctx.fillStyle = "#0a0000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); drawMonsterFace(0.4 + Math.min(1, p * 2.2) * 1.5); } },
-    { dur: 2900, text: "Los pasillos te reclamaron. La oscuridad fue lo último que viste.",
+    { dur: 4600, text: "Los pasillos te reclamaron. La oscuridad fue lo último que viste.",
       onEnter() { beep(48, 0.9, "sine", 0.14); },
       draw(p, now) {
         ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -941,7 +941,7 @@
     if (cur) lines.push(cur); return lines;
   }
   function drawCineText(text, p) {
-    const reveal = Math.max(0, Math.min(1, (p - 0.12) / 0.5)), shown = text.slice(0, Math.ceil(text.length * reveal));
+    const reveal = Math.max(0, Math.min(1, (p - 0.08) / 0.4)), shown = text.slice(0, Math.ceil(text.length * reveal));
     const font = "italic 19px Courier New", lines = wrapText(shown, Math.min(VIEW_W - 80, 620), font);
     ctx.save(); ctx.font = font; ctx.textAlign = "center"; ctx.fillStyle = "#d8c7a0"; ctx.shadowColor = "#000"; ctx.shadowBlur = 8;
     let y = VIEW_H * 0.74; for (const ln of lines) { ctx.fillText(ln, VIEW_W / 2, y); y += 28; } ctx.restore();
