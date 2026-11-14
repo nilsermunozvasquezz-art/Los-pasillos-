@@ -89,9 +89,10 @@
   #stick { position: absolute; bottom: 32px; left: 32px; width: 128px; height: 128px; border-radius: 50%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15); pointer-events: auto; touch-action: none; }
   #nub { position: absolute; top: 50%; left: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); }
   .tbtn { position: absolute; border-radius: 50%; pointer-events: auto; touch-action: none; font-family: inherit; letter-spacing: 1px; }
-  #actionBtn { bottom: 44px; right: 32px; width: 88px; height: 88px; background: rgba(90,110,130,.18); border: 1px solid rgba(160,190,220,.4); color: #cfe; font-size: 13px; }
-  #decoyBtn { bottom: 148px; right: 40px; width: 64px; height: 64px; background: rgba(120,90,160,.18); border: 1px solid rgba(180,150,220,.45); color: #dce; font-size: 11px; }
-  #lightBtn { bottom: 226px; right: 46px; width: 58px; height: 58px; background: rgba(200,180,90,.16); border: 1px solid rgba(230,210,120,.45); color: #ffe9a8; font-size: 11px; }
+  #actionBtn { bottom: 34px; right: 30px; width: 84px; height: 84px; background: rgba(90,110,130,.18); border: 1px solid rgba(160,190,220,.4); color: #cfe; font-size: 13px; }
+  #decoyBtn { bottom: 126px; right: 38px; width: 58px; height: 58px; background: rgba(120,90,160,.18); border: 1px solid rgba(180,150,220,.45); color: #dce; font-size: 10px; }
+  #radarBtn { bottom: 194px; right: 42px; width: 54px; height: 54px; background: rgba(60,150,140,.18); border: 1px solid rgba(110,230,210,.45); color: #9ffff0; font-size: 10px; }
+  #lightBtn { bottom: 258px; right: 46px; width: 52px; height: 52px; background: rgba(200,180,90,.16); border: 1px solid rgba(230,210,120,.45); color: #ffe9a8; font-size: 10px; }
   #cineSkip { position: fixed; bottom: 24px; right: 28px; z-index: 11; display: none; background: rgba(0,0,0,.5); border: 1px solid #555; color: #bbb; font-family: inherit; font-size: 13px; letter-spacing: 2px; padding: 8px 16px; cursor: pointer; }
   #cineSkip:hover { color: #fff; border-color: #999; }
 </style>
@@ -106,7 +107,7 @@
       <div class="bar" id="battWrap">LINTERNA <div class="track"><div class="fill" id="battFill"></div></div></div>
       <div class="bar" id="sanWrap">CORDURA <div class="track"><div class="fill" id="sanFill"></div></div></div>
       <div class="bar" id="stamWrap" style="display:none">ALIENTO <div class="track"><div class="fill" id="stamFill"></div></div></div>
-      <div id="itemsHud">NOTAS <span class="ic" id="noteCount">0</span> · SEÑUELOS <span class="ic" id="decoyCount">0</span></div>
+      <div id="itemsHud">NOTAS <span class="ic" id="noteCount">0</span> · SEÑUELOS <span class="ic" id="decoyCount">0</span> · RADAR <span class="ic" id="radarCount">0</span></div>
     </div>
     <div id="msg"></div>
     <button id="pauseBtn">⏸</button>
@@ -120,6 +121,7 @@
   <div id="touch">
     <div id="stick"><div id="nub"></div></div>
     <button id="lightBtn" class="tbtn">LUZ</button>
+    <button id="radarBtn" class="tbtn">RADAR</button>
     <button id="decoyBtn" class="tbtn">SEÑUELO</button>
     <button id="actionBtn" class="tbtn">ACCIÓN</button>
   </div>
@@ -228,7 +230,7 @@
   const BASE_VISION = 170, CONE_HALF = Math.PI * (110 / 2) / 180; // cono 110°
   const AMBIENT_R = 42, KEY_COUNT = 5;
   const N_BATTERIES = 4, N_NOTES = 3, N_TRAPS = 5, N_LOCKERS = 4;
-  const N_DECOY_PICKUPS = 2, N_MASTERKEY = 1, N_BOOTS = 1;
+  const N_DECOY_PICKUPS = 2, N_MASTERKEY = 1, N_BOOTS = 1, N_RADARS = 2;
 
   const DIFF = {
     facil:     { enemy: 1.4, chase: 2.0,  sight: 210, sightDark: 70,  batt: 1.4, san: 7,  label: "Fácil" },
@@ -312,10 +314,10 @@
   function hash(x, y) { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >> 13)) * 1274126177 | 0; return ((h ^ (h >> 16)) >>> 0) / 4294967295; }
 
   // ---------------------------------------------------------------- Estado
-  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, stepAt: 0 };
+  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0 };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 };
-  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], decoysActive = [], bloodDecals = [], wallLights = [];
-  let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0;
+  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], decoysActive = [], bloodDecals = [], wallLights = [];
+  let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0;
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
   let collected = 0, notesFound = 0, notesPlaced = 0;
   let running = false, paused = false, startTime = 0, elapsed = 0, fearPulse = 0;
@@ -348,7 +350,7 @@
     const p = cellCenter(1, 1);
     player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0; player.face = Math.PI / 4;
     player.hidden = false; player.stunUntil = 0; player.light = true; player.stepAt = 0; player.stamina = 100;
-    if (fresh) { player.battery = 100; player.hasBoots = false; player.decoys = 0; player.sanity = 100; }
+    if (fresh) { player.battery = 100; player.hasBoots = false; player.decoys = 0; player.radars = 0; player.sanity = 100; }
     else { player.sanity = Math.min(100, player.sanity + 35); }
 
     const sd = bfsFrom(1, 1);
@@ -365,6 +367,7 @@
     batteries = pickSpread(nearOrder, N_BATTERIES, 3, used).map(mk);
     boots = player.hasBoots ? [] : pickSpread(nearOrder, N_BOOTS, 3, used).map(mk);
     decoyPickups = pickSpread(nearOrder, N_DECOY_PICKUPS, 3, used).map(mk);
+    radars = pickSpread(nearOrder, N_RADARS, 3, used).map(mk);
     const notePool = NOTE_TEXTS.slice(); shuffle(notePool);
     notes = pickSpread(nearOrder, N_NOTES, 3, used).map((c, i) => { const o = mk(c); o.text = notePool[i % notePool.length]; return o; });
     notesPlaced += notes.length;
@@ -391,7 +394,7 @@
     }
 
     decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; fearPulse = 0;
-    glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0;
+    glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0; radarUntil = 0;
     document.getElementById("stamWrap").style.display = player.hasBoots ? "flex" : "none";
     updateHud(); updateBatt(); updateSan(); updateFloorHud();
   }
@@ -414,6 +417,7 @@
     if (e.code === "KeyE" || e.code === "Space") { interact(); e.preventDefault(); }
     if (e.code === "KeyF") { toggleLight(); e.preventDefault(); }
     if (e.code === "KeyQ") { throwDecoy(); e.preventDefault(); }
+    if (e.code === "KeyR") { useRadar(); e.preventDefault(); }
   });
   addEventListener("keyup", e => {
     if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = false; e.preventDefault(); }
@@ -440,7 +444,7 @@
   addEventListener("mousemove", e => { if (touch.active) stickMove(e); });
   addEventListener("mouseup", stickEnd);
   function bindBtn(id, fn) { const el = document.getElementById(id); el.addEventListener("touchstart", e => { e.preventDefault(); if (running && !paused) fn(); }); el.addEventListener("mousedown", e => { e.preventDefault(); if (running && !paused) fn(); }); }
-  bindBtn("actionBtn", interact); bindBtn("lightBtn", toggleLight); bindBtn("decoyBtn", throwDecoy);
+  bindBtn("actionBtn", interact); bindBtn("lightBtn", toggleLight); bindBtn("decoyBtn", throwDecoy); bindBtn("radarBtn", useRadar);
   document.getElementById("pauseBtn").addEventListener("click", () => { if (running) togglePause(); });
   if ("ontouchstart" in window) { document.getElementById("startHint").textContent = "Joystick + botones · Sonido 🎧"; } // los controles se muestran al empezar el juego, no en el menú
 
@@ -461,7 +465,7 @@
     if (cine) { if (hit(0) || hit(9)) endCinematic(); gpPrev = p.buttons.map(b => b.pressed); return; }
     if (hit(9)) { if (running) togglePause(); }
     if (!running || paused) { if (hit(0)) startBtnAction(); }
-    else { if (hit(0)) interact(); if (hit(1)) toggleLight(); if (hit(2)) throwDecoy(); if (hit(3)) toggleLight(); }
+    else { if (hit(0)) interact(); if (hit(1)) toggleLight(); if (hit(2)) throwDecoy(); if (hit(3)) useRadar(); }
     gpPrev = p.buttons.map(b => b.pressed);
   }
 
@@ -485,6 +489,12 @@
     enemy.lureUntil = performance.now() + 5000; enemy.lurePos = { x: px, y: py }; enemy.repathT = 0;
     beep(760, 0.09, "square", 0.18); setTimeout(() => beep(520, 0.12, "square", 0.16), 80);
     flashMsg("¡Señuelo lanzado! Lo distrae"); updateHud();
+  }
+  function useRadar() {
+    if (player.radars <= 0) { flashMsg("No tienes radares"); return; }
+    player.radars--; radarUntil = performance.now() + 3000;
+    beep(1200, 0.08, "sine", 0.18); setTimeout(() => beep(1500, 0.1, "sine", 0.16), 90);
+    flashMsg("RADAR: ubicación del monstruo (3 s)"); updateHud();
   }
 
   // ---------------------------------------------------------------- Audio
@@ -511,11 +521,12 @@
   }
   function thunder() {
     if (!actx) return;
-    // Trueno audible también en parlantes de celular (más cuerpo medio, más volumen)
-    noise(0.22, 0.5, "bandpass", 1300);              // chasquido
-    noise(1.9, 0.55, "lowpass", 430);                // retumbo con cuerpo
-    setTimeout(() => noise(1.1, 0.4, "lowpass", 280), 240);
-    setTimeout(() => noise(0.6, 0.28, "lowpass", 190), 650);
+    // Trueno bien audible en parlantes de celular: chasquido agudo + crack medio + retumbo
+    noise(0.07, 0.85, "highpass", 2400);             // chasquido agudo (corta en móvil)
+    noise(0.3, 0.8, "bandpass", 1100);               // crack medio
+    noise(2.0, 0.75, "lowpass", 520);                // retumbo con cuerpo
+    setTimeout(() => noise(1.2, 0.55, "lowpass", 320), 240);
+    setTimeout(() => noise(0.7, 0.35, "lowpass", 210), 680);
   }
   function strike() {
     lightningUntil = performance.now() + 200;
@@ -719,6 +730,7 @@
       for (const b of batteries) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 10) { b.taken = true; player.battery = Math.min(100, player.battery + 45); beep(520, 0.08, "square", 0.18); setTimeout(() => beep(760, 0.1, "square", 0.18), 70); flashMsg("Pila (+linterna)"); updateBatt(); }
       for (const b of boots) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 11) { b.taken = true; player.hasBoots = true; document.getElementById("stamWrap").style.display = "flex"; beep(300, 0.1, "square", 0.18); setTimeout(() => beep(450, 0.12, "square", 0.18), 80); flashMsg("¡Botas! Mantén Shift para correr"); }
       for (const dp of decoyPickups) if (!dp.taken && dist(player.x, player.y, dp.x, dp.y) < PLAYER_R + 11) { dp.taken = true; player.decoys += 2; beep(640, 0.09, "square", 0.16); flashMsg("Señuelos +2 (Q para lanzar)"); updateHud(); }
+      for (const rd of radars) if (!rd.taken && dist(player.x, player.y, rd.x, rd.y) < PLAYER_R + 11) { rd.taken = true; player.radars++; beep(900, 0.08, "sine", 0.16); flashMsg("Radar +1 (R para ver al monstruo)"); updateHud(); }
       for (const n of notes) if (!n.taken && dist(player.x, player.y, n.x, n.y) < PLAYER_R + 10) { n.taken = true; notesFound++; document.getElementById("noteCount").textContent = notesFound; beep(330, 0.12, "sine", 0.14); showNote(n.text); }
       for (const tr of traps) if (!tr.triggered && dist(player.x, player.y, tr.x, tr.y) < 16) { tr.triggered = true; player.stunUntil = now + 900; enemy.alertUntil = now + 4500; enemy.lureUntil = 0; enemy.chasing = true; enemy.repathT = 0; player.sanity = Math.max(0, player.sanity - 12); beep(140, 0.25, "sawtooth", 0.3); setTimeout(() => beep(90, 0.3, "sawtooth", 0.25), 120); flashMsg("¡TRAMPA! El ruido lo atrajo"); }
       if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
@@ -803,6 +815,7 @@
     for (const b of batteries) if (!b.taken) drawBattery(b, t);
     for (const b of boots) if (!b.taken) drawBoots(b, t);
     for (const dp of decoyPickups) if (!dp.taken) drawDecoyPickup(dp, t);
+    for (const rd of radars) if (!rd.taken) drawRadarItem(rd, t);
     for (const n of notes) if (!n.taken) drawNote(n, t);
     for (const k of keys) if (!k.taken) drawKey(k, t, false);
     for (const k of masterKeys) if (!k.taken) drawKey(k, t, true);
@@ -833,7 +846,7 @@
     if (player.hidden) { ctx.fillStyle = "rgba(190,190,200,0.55)"; ctx.font = "13px Courier New"; ctx.textAlign = "center"; ctx.fillText("· escondido ·  (E para salir)", px2, py2 + BASE_VISION * 0.6 + 8); ctx.textAlign = "left"; }
 
     const _pad = 10, _h = ROWS * 4;
-    if (running && player.light) { drawMinimap(); drawClock(_pad + _h + 6); }
+    if (running && (player.light || now < radarUntil)) { drawMinimap(); drawClock(_pad + _h + 6); }
     else if (running) drawClock(_pad);
   }
 
@@ -950,6 +963,14 @@
     for (let a = 0; a < 8; a++) { const ang = a / 8 * Math.PI * 2, ix = tr.x + Math.cos(ang) * 6, iy = tr.y + Math.sin(ang) * 6; ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(tr.x + Math.cos(ang - 0.2) * 10, tr.y + Math.sin(ang - 0.2) * 10); ctx.lineTo(tr.x + Math.cos(ang + 0.2) * 10, tr.y + Math.sin(ang + 0.2) * 10); ctx.closePath(); ctx.fill(); }
     ctx.restore();
   }
+  function drawRadarItem(rd, t) {
+    const g = 0.5 + Math.sin(t * 1.6 + rd.x) * 0.4;
+    ctx.save(); ctx.shadowColor = "rgba(90,220,210," + g + ")"; ctx.shadowBlur = 12;
+    ctx.fillStyle = "#15463f"; ctx.beginPath(); ctx.arc(rd.x, rd.y, 6, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#6fe6d6"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rd.x, rd.y, 6, 0, 7); ctx.stroke();
+    const a = (t * 2.5) % (Math.PI * 2); ctx.strokeStyle = "#9ffff0"; ctx.beginPath(); ctx.moveTo(rd.x, rd.y); ctx.lineTo(rd.x + Math.cos(a) * 6, rd.y + Math.sin(a) * 6); ctx.stroke();
+    ctx.restore();
+  }
   function drawWallLight(w) {
     const [dx, dy] = w.dir;
     ctx.fillStyle = "#2a2620"; ctx.fillRect(w.x - 5, w.y - 5, 10, 10);
@@ -978,7 +999,8 @@
     for (const k of keys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); ctx.fillStyle = "rgba(255,207,77," + (0.5 + Math.sin(t + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
     for (const k of masterKeys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); ctx.fillStyle = "rgba(255,170,40," + (0.5 + Math.sin(t * 1.5 + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
     const open = collected >= KEY_COUNT; ctx.fillStyle = open ? "#5ad45a" : "#b06a2a"; ctx.fillRect(ox + door.gx * s - 1, oy + door.gy * s - 1, s + 2, s + 2);
-    if (enemy.chasing && !player.hidden) { const egx = Math.floor(enemy.x / TILE), egy = Math.floor(enemy.y / TILE); ctx.fillStyle = "rgba(255,40,40," + (0.4 + Math.sin(t * 2) * 0.4) + ")"; ctx.fillRect(ox + egx * s - 1, oy + egy * s - 1, s + 2, s + 2); }
+    const radarOn = performance.now() < radarUntil;
+    if ((enemy.chasing && !player.hidden) || radarOn) { const egx = Math.floor(enemy.x / TILE), egy = Math.floor(enemy.y / TILE); const pulse = 0.4 + Math.sin(t * 2) * 0.4; ctx.fillStyle = radarOn ? "rgba(90,255,220," + (0.55 + Math.sin(t * 4) * 0.45) + ")" : "rgba(255,40,40," + pulse + ")"; ctx.fillRect(ox + egx * s - 2, oy + egy * s - 2, s + 4, s + 4); }
     const pgx = Math.floor(player.x / TILE), pgy = Math.floor(player.y / TILE); ctx.fillStyle = "#eef"; ctx.fillRect(ox + pgx * s, oy + pgy * s, s, s);
     ctx.restore();
   }
@@ -993,7 +1015,7 @@
   const elBatt = document.getElementById("battFill"), elSan = document.getElementById("sanFill"), elStam = document.getElementById("stamFill");
   const elPrompt = document.getElementById("prompt"), elNote = document.getElementById("note");
   let msgTimer = null, noteTimer = null;
-  function updateHud() { elKeyCount.textContent = collected; document.getElementById("decoyCount").textContent = player.decoys; document.getElementById("noteCount").textContent = notesFound; }
+  function updateHud() { elKeyCount.textContent = collected; document.getElementById("decoyCount").textContent = player.decoys; document.getElementById("radarCount").textContent = player.radars; document.getElementById("noteCount").textContent = notesFound; }
   function updateBatt() { const b = Math.max(0, player.battery); elBatt.style.width = b + "%"; elBatt.style.background = !player.light ? "#3a4048" : b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)"; }
   function updateSan() { const v = Math.max(0, player.sanity); elSan.style.width = v + "%"; elSan.style.background = v < 30 ? "linear-gradient(90deg,#7a2e8a,#c04bd0)" : "linear-gradient(90deg,#5a4a9a,#9a86d0)"; elStam.style.width = player.stamina + "%"; elStam.style.background = "linear-gradient(90deg,#8a6a2a,#d0b060)"; }
   function updatePrompt() { if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
@@ -1094,6 +1116,7 @@
   }
   function descend() {
     running = false; floorIdx++;
+    if (actx && rainGain) rainGain.gain.setTargetAtTime((weather.intensity * 0.5) * 0.12, actx.currentTime, 0.35); // baja la lluvia durante la transición
     const fl = FLOORS[floorIdx];
     const scenes = [{
       dur: 4600, text: "Bajas más profundo… " + fl.name + ".",

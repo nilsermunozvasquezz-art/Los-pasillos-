@@ -17,7 +17,7 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - Varios **pisos** temáticos (El Complejo, La Biblioteca) con salas y un monstruo por piso
 - Laberinto generado al azar; linterna direccional (cono 110°) con parpadeos y apagones
 - **La luz atrae al monstruo**: apágala para pasar desapercibido · pilas, armarios, trampas
-- Ítems: llave maestra (+2), señuelos (distraen al monstruo), botas (correr)
+- Ítems: llave maestra (+2), señuelos (distraen al monstruo), botas (correr), radar (R: ubica al monstruo 3 s)
 - Barra de **cordura** (distorsiona la pantalla), **huellas** y gruñido direccional
 - **Focos en las paredes** que parpadean y dan luz alrededor
 - **Clima al azar**: lluvia con sonido, truenos y relámpagos que iluminan la escena
