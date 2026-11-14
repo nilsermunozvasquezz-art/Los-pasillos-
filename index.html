@@ -517,15 +517,13 @@
       // Cadena maestra: recorta agudos y limita picos para que no sature ni "chille"
       const comp = actx.createDynamicsCompressor();
       comp.threshold.value = -14; comp.knee.value = 24; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.25;
-      const tone = actx.createBiquadFilter(); tone.type = "highshelf"; tone.frequency.value = 2600; tone.gain.value = -8;
+      const tone = actx.createBiquadFilter(); tone.type = "highshelf"; tone.frequency.value = 2600; tone.gain.value = -3;
       masterGain = actx.createGain(); masterGain.gain.value = 0.92;
       masterGain.connect(tone); tone.connect(comp); comp.connect(actx.destination);
       musicGain = actx.createGain(); musicGain.gain.value = settings.music;
       const mLp = actx.createBiquadFilter(); mLp.type = "lowpass"; mLp.frequency.value = 1050; mLp.Q.value = 0.7;
       musicGain.connect(mLp); mLp.connect(masterGain);   // la música va filtrada: nada de agudos chillones
-      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx;
-      const sLp = actx.createBiquadFilter(); sLp.type = "lowpass"; sLp.frequency.value = 2400; sLp.Q.value = 0.7;
-      sfxGain.connect(sLp); sLp.connect(masterGain);   // los efectos también van filtrados
+      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx; sfxGain.connect(masterGain);
       const o1 = actx.createOscillator(), o2 = actx.createOscillator();
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
       droneGain = actx.createGain(); droneGain.gain.value = 0.045;
