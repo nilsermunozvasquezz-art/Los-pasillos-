@@ -362,35 +362,52 @@
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
       droneGain = actx.createGain(); droneGain.gain.value = 0.04;
       o1.connect(droneGain); o2.connect(droneGain); droneGain.connect(actx.destination); o1.start(); o2.start();
-      musicGain = actx.createGain(); musicGain.gain.value = 0.5; musicGain.connect(actx.destination);
+      musicGain = actx.createGain(); musicGain.gain.value = 0.95; musicGain.connect(actx.destination);
       if (!musicTimer) musicLoop();
     } catch (e) { actx = null; }
   }
   // --- Música de fondo (acordes en tono menor que loopean) ---
   const MUSIC_CHORDS = [[110, 130.81, 164.81], [87.31, 130.81, 174.61], [73.42, 110, 146.83], [82.41, 123.47, 164.81]];
+  const MELODY = [329.63, 392.00, 440.00, 523.25, 440.00, 392.00, 349.23, 329.63]; // A menor pentatónica
   let musicIdx = 0;
   function playPad(freqs, dur, vol) {
     if (!actx) return; const t = actx.currentTime;
     for (const f of freqs) {
-      const o = actx.createOscillator(), g = actx.createGain();
-      o.type = "sine"; o.frequency.value = f; g.gain.value = 0; o.connect(g); g.connect(musicGain);
-      g.gain.linearRampToValueAtTime(vol, t + dur * 0.3); g.gain.linearRampToValueAtTime(vol * 0.8, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
-      o.start(t); o.stop(t + dur + 0.1);
+      for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.45]]) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = layer[0]; o.frequency.value = f + layer[1]; g.gain.value = 0; o.connect(g); g.connect(musicGain);
+        g.gain.linearRampToValueAtTime(layer[2], t + dur * 0.3); g.gain.linearRampToValueAtTime(layer[2] * 0.8, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.1);
+      }
     }
+  }
+  function playMelodyNote(f, delay, vol) {
+    setTimeout(() => {
+      if (!actx) return; const o = actx.createOscillator(), g = actx.createGain(), lp = actx.createBiquadFilter();
+      lp.type = "lowpass"; lp.frequency.value = 1400; o.type = "triangle"; o.frequency.value = f; g.gain.value = 0;
+      o.connect(lp); lp.connect(g); g.connect(musicGain); const t = actx.currentTime;
+      g.gain.linearRampToValueAtTime(vol, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.7); o.start(t); o.stop(t + 1.8);
+    }, delay);
   }
   function musicLoop() {
     if (!actx) { musicTimer = setTimeout(musicLoop, 2000); return; }
-    playPad(MUSIC_CHORDS[musicIdx % MUSIC_CHORDS.length], 5.2, 0.05);
-    if (Math.random() < 0.5) { const hi = [440, 523.25, 587.33, 659.25][(Math.random() * 4) | 0]; setTimeout(() => { if (!actx) return; const o = actx.createOscillator(), g = actx.createGain(); o.type = "triangle"; o.frequency.value = hi; g.gain.value = 0; o.connect(g); g.connect(musicGain); const t = actx.currentTime; g.gain.linearRampToValueAtTime(0.022, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2); o.start(t); o.stop(t + 2.3); }, 1500 + Math.random() * 2000); }
+    playPad(MUSIC_CHORDS[musicIdx % MUSIC_CHORDS.length], 5.2, 0.09);
+    const n = 2 + (Math.random() < 0.5 ? 1 : 0);
+    for (let i = 0; i < n; i++) playMelodyNote(MELODY[(musicIdx * 2 + i) % MELODY.length], 400 + i * 1300 + Math.random() * 300, 0.055);
     musicIdx++;
-    if (musicGain) musicGain.gain.setTargetAtTime(0.5 + Math.min(0.45, fearPulse * 0.5), actx.currentTime, 1.0);
+    if (musicGain) musicGain.gain.setTargetAtTime(0.95 + Math.min(0.5, fearPulse * 0.5), actx.currentTime, 1.0);
     musicTimer = setTimeout(musicLoop, 4500);
   }
   // --- Pasos del jugador ---
   function footstep(run) {
-    if (!actx) return;
-    noise(run ? 0.07 : 0.09, run ? 0.11 : 0.075, "lowpass", run ? 210 : 155);
-    if (run) setTimeout(() => noise(0.04, 0.045, "highpass", 1900), 12);
+    if (!actx) return; const t = actx.currentTime;
+    // cuerpo de la pisada: un "golpe" con tono que baja rápido
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(run ? 200 : 155, t); o.frequency.exponentialRampToValueAtTime(run ? 72 : 55, t + 0.09);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(run ? 0.24 : 0.16, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + (run ? 0.12 : 0.15));
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.17);
+    // roce del pie: ráfaga corta de ruido
+    noise(run ? 0.05 : 0.055, run ? 0.075 : 0.05, run ? "highpass" : "bandpass", run ? 2600 : 900);
   }
   function beep(freq, dur, type, vol) {
     if (!actx) return;
