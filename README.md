@@ -9,7 +9,7 @@ en cada uno reúne las **5 llaves** y cruza la **puerta**, mientras algo te caza
 Abre `index.html` en cualquier navegador (no requiere instalación).
 
 - **Mover:** WASD / flechas (joystick en móvil, o control/gamepad 🎮)
-- **Shift:** correr (con botas) · **F:** linterna · **E:** esconderte · **Q:** señuelo · **P:** pausa
+- **Shift:** correr · **F:** linterna · **E:** esconderte / activar generador · **Q:** señuelo · **R:** radar · **P:** pausa
 - **Objetivo:** reúne 5 llaves por piso, baja y escapa del último
 
 ## Características
