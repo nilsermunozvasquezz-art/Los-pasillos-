@@ -318,7 +318,7 @@
 
   // ---------------------------------------------------------------- Estado
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0 };
-  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0, stepAt: 0 };
+  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0 };
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0;
   let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false;
@@ -385,7 +385,7 @@
 
     let es = cells[(cells.length * 0.6) | 0]; for (const [x, y] of cells) if (sd[y][x] > ROWS * 0.6) { es = [x, y]; break; }
     const ec = cellCenter(es[0], es[1]);
-    Object.assign(enemy, { x: ec.x, y: ec.y, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0, stepAt: 0 });
+    Object.assign(enemy, { x: ec.x, y: ec.y, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0 });
 
     // Focos en las paredes (celdas de pared con un pasillo al lado)
     wallLights = [];
@@ -678,6 +678,13 @@
     if (!isWall(nx + (obj.vx > 0 ? r : -r), obj.y) && !isWall(nx + (obj.vx > 0 ? r : -r), obj.y - r + 1) && !isWall(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) obj.x = nx;
     if (!isWall(obj.x, ny + (obj.vy > 0 ? r : -r)) && !isWall(obj.x - r + 1, ny + (obj.vy > 0 ? r : -r)) && !isWall(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) obj.y = ny;
   }
+  // ¿El monstruo puede VERTE? (no hay pared entre los dos)
+  function hasLineOfSight(x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+    const steps = Math.ceil(d / 9);
+    for (let i = 1; i < steps; i++) { const t = i / steps; if (isWall(x1 + dx * t, y1 + dy * t)) return false; }
+    return true;
+  }
   function enemyRepath() {
     const ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE);
     const now = performance.now();
@@ -689,6 +696,7 @@
     let tx, ty;
     if (now < enemy.lureUntil && enemy.lurePos) { tx = Math.floor(enemy.lurePos.x / TILE); ty = Math.floor(enemy.lurePos.y / TILE); }
     else if (enemy.chasing || now < enemy.alertUntil) { tx = Math.floor(player.x / TILE); ty = Math.floor(player.y / TILE); }
+    else if (now < enemy.searchUntil && enemy.lastSeen) { tx = Math.floor(enemy.lastSeen.x / TILE); ty = Math.floor(enemy.lastSeen.y / TILE); }
     else {
       // Deambular: un destino CERCANO y alcanzable (distancia 4–10), no cualquier punto del mapa
       const band = [], far = [];
@@ -774,8 +782,10 @@
     const lured = now < enemy.lureUntil, alerted = now < enemy.alertUntil;
     const wasChasing = enemy.chasing;
     const sight = (player.light ? diff.sight : diff.sightDark) + (sprinting ? 40 : 0);
-    if (lured) enemy.chasing = true;
-    else enemy.chasing = (!player.hidden && dToP < sight) || alerted;
+    // Solo te persigue si DE VERDAD te ve: dentro del alcance y sin pared en medio
+    const sees = !player.hidden && dToP < sight && hasLineOfSight(enemy.x, enemy.y, player.x, player.y);
+    if (sees) { enemy.lastSeen = { x: player.x, y: player.y }; enemy.searchUntil = now + 2000; } // recuerda 2s dónde te vio
+    enemy.chasing = lured || sees || alerted;
     if (enemy.chasing && !player.hidden && !lured) runChased = true;
     enemy.repathT -= dt;
     if (enemy.repathT <= 0 || (enemy.chasing && !wasChasing) || enemy.path.length === 0) { enemyRepath(); enemy.repathT = (enemy.chasing || lured) ? 22 : 70; }
