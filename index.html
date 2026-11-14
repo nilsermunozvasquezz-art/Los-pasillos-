@@ -509,13 +509,19 @@
   }
 
   // ---------------------------------------------------------------- Audio
-  let actx = null, droneGain = null, musicGain = null, sfxGain = null, rainGain = null, rainSource = null, heartTimer = null, ambTimer = null, growlTimer = null, musicTimer = null, evTimer = null, weatherTimer = null, thunderTimer = null;
+  let actx = null, droneGain = null, masterGain = null, musicGain = null, sfxGain = null, rainGain = null, rainSource = null, heartTimer = null, ambTimer = null, growlTimer = null, musicTimer = null, evTimer = null, weatherTimer = null, thunderTimer = null;
   function initAudio() {
     if (actx) return;
     try {
       actx = new (window.AudioContext || window.webkitAudioContext)();
-      musicGain = actx.createGain(); musicGain.gain.value = settings.music; musicGain.connect(actx.destination);
-      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx; sfxGain.connect(actx.destination);
+      // Cadena maestra: recorta agudos y limita picos para que no sature ni "chille"
+      const comp = actx.createDynamicsCompressor();
+      comp.threshold.value = -14; comp.knee.value = 24; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.25;
+      const tone = actx.createBiquadFilter(); tone.type = "highshelf"; tone.frequency.value = 2600; tone.gain.value = -8;
+      masterGain = actx.createGain(); masterGain.gain.value = 0.92;
+      masterGain.connect(tone); tone.connect(comp); comp.connect(actx.destination);
+      musicGain = actx.createGain(); musicGain.gain.value = settings.music; musicGain.connect(masterGain);
+      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx; sfxGain.connect(masterGain);
       const o1 = actx.createOscillator(), o2 = actx.createOscillator();
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
       droneGain = actx.createGain(); droneGain.gain.value = 0.045;
@@ -525,7 +531,7 @@
       const rbuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate), rd = rbuf.getChannelData(0);
       for (let i = 0; i < rd.length; i++) rd[i] = (Math.random() * 2 - 1) * 0.5;
       rainSource = actx.createBufferSource(); rainSource.buffer = rbuf; rainSource.loop = true;
-      const rf = actx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 2400;
+      const rf = actx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 1100;
       rainSource.connect(rf); rf.connect(rainGain); rainGain.connect(sfxGain); rainSource.start();
       if (!musicTimer) musicLoop();
     } catch (e) { actx = null; }
@@ -533,8 +539,8 @@
   function thunder() {
     if (!actx) return;
     // Trueno bien audible en parlantes de celular: chasquido agudo + crack medio + retumbo
-    noise(0.07, 0.85, "highpass", 2400);             // chasquido agudo (corta en móvil)
-    noise(0.3, 0.8, "bandpass", 1100);               // crack medio
+    noise(0.09, 0.45, "bandpass", 950);              // chasquido (sin agudos filosos)
+    noise(0.3, 0.6, "bandpass", 700);                // crack medio
     noise(2.0, 0.75, "lowpass", 520);                // retumbo con cuerpo
     setTimeout(() => noise(1.2, 0.55, "lowpass", 320), 240);
     setTimeout(() => noise(0.7, 0.35, "lowpass", 210), 680);
@@ -591,7 +597,7 @@
     o.type = "sine"; o.frequency.setValueAtTime(run ? 200 : 155, t); o.frequency.exponentialRampToValueAtTime(run ? 72 : 55, t + 0.09);
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(run ? 0.24 : 0.16, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + (run ? 0.12 : 0.15));
     o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + 0.17);
-    noise(run ? 0.05 : 0.055, run ? 0.075 : 0.05, run ? "highpass" : "bandpass", run ? 2600 : 900);
+    noise(run ? 0.05 : 0.055, run ? 0.06 : 0.05, "bandpass", run ? 1500 : 850);
   }
   function beep(freq, dur, type, vol) {
     if (!actx) return;
@@ -634,10 +640,10 @@
     if (running && !paused && !player.hidden) {
       const r = Math.random();
       if (r < 0.3) { noise(0.1, 0.12, "lowpass", 170); setTimeout(() => noise(0.1, 0.1, "lowpass", 170), 250); }
-      else if (r < 0.55) noise(0.6, 0.07, "bandpass", 1700);
+      else if (r < 0.55) noise(0.6, 0.07, "bandpass", 1250);
       else if (r < 0.75) noise(0.45, 0.09, "bandpass", 430);
       else if (r < 0.86) noise(0.22, 0.13, "lowpass", 110);
-      if (!enemy.chasing && player.sanity < 70 && Math.random() < 0.4) { scareUntil = performance.now() + 150; scareSide = Math.random() < 0.5 ? -1 : 1; noise(0.3, 0.16, "highpass", 2200); }
+      if (!enemy.chasing && player.sanity < 70 && Math.random() < 0.4) { scareUntil = performance.now() + 150; scareSide = Math.random() < 0.5 ? -1 : 1; noise(0.3, 0.13, "bandpass", 1300); }
     }
     ambTimer = setTimeout(ambientLoop, 6000 + Math.random() * 9000);
   }
@@ -656,9 +662,9 @@
   function eventLoop() {
     if (!running || paused || player.hidden) { evTimer = setTimeout(eventLoop, 6000); return; }
     const low = player.sanity < 50, r = Math.random();
-    if (r < 0.4) { scareFlash(SCARE_MSGS[(Math.random() * SCARE_MSGS.length) | 0]); noise(0.3, 0.16, "highpass", 2400); }
+    if (r < 0.4) { scareFlash(SCARE_MSGS[(Math.random() * SCARE_MSGS.length) | 0]); noise(0.3, 0.13, "bandpass", 1300); }
     else if (r < 0.72) { spawnBlood(player.x + (Math.random() - 0.5) * 120, player.y + (Math.random() - 0.5) * 120, 3 + ((Math.random() * 3) | 0)); noise(0.3, 0.1, "lowpass", 300); }
-    else { glitchUntil = performance.now() + 650; glitchLevel = 0.06; flashWhiteUntil = performance.now() + 110; beep(150, 0.2, "sawtooth", 0.22); noise(0.25, 0.2, "highpass", 3000); spawnBlood(player.x, player.y, 2); }
+    else { glitchUntil = performance.now() + 650; glitchLevel = 0.06; flashWhiteUntil = performance.now() + 110; beep(150, 0.2, "sawtooth", 0.22); noise(0.25, 0.16, "bandpass", 1600); spawnBlood(player.x, player.y, 2); }
     evTimer = setTimeout(eventLoop, (low ? 11000 : 19000) + Math.random() * 12000);
   }
 
@@ -790,7 +796,7 @@
       const vol = (1 - dToP / 340) * 0.22 + 0.035;
       const pan = Math.max(-1, Math.min(1, (enemy.x - player.x) / 260));
       noise(0.07, vol, "lowpass", 230, pan);
-      setTimeout(() => noise(0.035, vol * 0.5, "bandpass", 1500, pan), 25);
+      setTimeout(() => noise(0.035, vol * 0.45, "bandpass", 900, pan), 25);
       enemy.stepAt = now + ((enemy.chasing || lured) ? 300 : 520);
     }
     enemy.trailT -= dt;
@@ -800,7 +806,7 @@
     if (enemy.chasing && !player.hidden && !lured) fearPulse = Math.max(fearPulse, 0.45);
     if (fearPulse > 0.3 && !player.hidden) player.sanity = Math.max(0, player.sanity - diff.san * fearPulse * dtSec);
     else player.sanity = Math.min(100, player.sanity + (player.hidden ? 14 : 5) * dtSec);
-    if (player.sanity < 35 && Math.random() < 0.01) noise(0.5, 0.05 + (35 - player.sanity) / 35 * 0.08, "bandpass", 1800);
+    if (player.sanity < 35 && Math.random() < 0.01) noise(0.5, 0.05 + (35 - player.sanity) / 35 * 0.08, "bandpass", 1300);
     updateSan();
 
     if (!player.hidden && dToP < PLAYER_R + 12) { lose(); return; }
@@ -1323,7 +1329,7 @@
   }
   function lose() {
     running = false; fearPulse = 1; clearSave();
-    beep(70, 0.6, "sawtooth", 0.35); setTimeout(() => beep(42, 0.9, "sawtooth", 0.3), 80); noise(0.6, 0.3, "highpass", 1200);
+    beep(70, 0.6, "sawtooth", 0.35); setTimeout(() => beep(42, 0.9, "sawtooth", 0.3), 80); noise(0.6, 0.22, "bandpass", 850);
     document.getElementById("overText").textContent = "Caíste en el piso " + (floorIdx + 1) + " (" + FLOORS[floorIdx].name + "). Reuniste " + collected + " de " + KEY_COUNT + " llaves.";
     playCinematic(() => { hideAllScreens(); overScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, CINE_LOSE);
   }
@@ -1398,7 +1404,7 @@
         for (let i = 0; i < 5; i++) { const ang = (i / 5) * Math.PI * 2 - Math.PI / 2; const r = kp * Math.max(VIEW_W, VIEW_H) * 0.55; ctx.save(); ctx.globalAlpha = 1 - kp * 0.4; drawMiniKey(dx + Math.cos(ang) * r, dy + Math.sin(ang) * r); ctx.restore(); }
       } },
     { dur: 6400, text: "Ahora despiertas dentro. Una linterna moribunda es todo lo que tienes.",
-      onEnter() { beep(900, 0.03, "square", 0.12); setTimeout(() => noise(0.12, 0.1, "highpass", 3000), 40); },
+      onEnter() { beep(900, 0.03, "square", 0.12); setTimeout(() => noise(0.12, 0.07, "bandpass", 1800), 40); },
       draw(p, now) {
         const cx = VIEW_W * 0.5, cy = VIEW_H * 0.62, on = p > 0.2 && !(p < 0.3 && Math.random() < 0.4);
         if (on) {
@@ -1455,7 +1461,7 @@
   ]);
   const CINE_LOSE = [
     { dur: 1100, text: "",
-      onEnter() { growl(0.4, 0); noise(0.4, 0.25, "highpass", 1400); },
+      onEnter() { growl(0.4, 0); noise(0.4, 0.2, "bandpass", 1000); },
       draw(p, now) { ctx.fillStyle = "#0a0000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); drawMonsterFace(0.4 + Math.min(1, p * 2.2) * 1.5); } },
     { dur: 4600, text: "Los pasillos te reclamaron. La oscuridad fue lo último que viste.",
       onEnter() { beep(48, 0.9, "sine", 0.14); },
