@@ -14,7 +14,9 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 
 ## Características
 
-- Varios **pisos** temáticos (El Complejo, La Biblioteca, La Enfermería) con salas y un monstruo por piso
+- Varios **pisos** temáticos (El Complejo, La Biblioteca, La Enfermería) con habitaciones y un monstruo por piso
+- **Habitaciones con puertas automáticas** que se abren al acercarte
+- Suelos y muros con **texturas continuas** (hormigón, tablones de madera, baldosas)
 - Laberinto generado al azar; linterna direccional (cono 110°) con parpadeos y apagones
 - **La luz atrae al monstruo**: apágala para pasar desapercibido · pilas, armarios, trampas
 - Ítems: llave maestra (+2), señuelos, botas (correr), radar (ubica al monstruo 3 s), mapa del piso
