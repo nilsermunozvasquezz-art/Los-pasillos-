@@ -247,9 +247,9 @@
     { name: "La Enfermería", theme: "enfermeria" },
   ];
   const THEMES = {
-    complex: { wall: "#14161c", wallTop: "#20242e", wallBot: "#0b0c10", fBase: 34, fTint: [9, 2, -4], decor: "grime" },
-    library: { wall: "#241a10", wallTop: "#3a2a1a", wallBot: "#140d06", fBase: 40, fTint: [16, 7, -5], decor: "books" },
-    enfermeria: { wall: "#262e2a", wallTop: "#36423c", wallBot: "#121814", fBase: 44, fTint: [2, 7, 2], decor: "tiles" },
+    complex: { wall: "#2a2f37", wallTop: "#3a414b", wallBot: "#13161b", fBase: 34, fTint: [9, 2, -4], decor: "grime" },
+    library: { wall: "#3a2a1a", wallTop: "#4d3826", wallBot: "#190f08", fBase: 40, fTint: [16, 7, -5], decor: "books" },
+    enfermeria: { wall: "#3b4641", wallTop: "#4f5e58", wallBot: "#1a211d", fBase: 44, fTint: [2, 7, 2], decor: "tiles" },
   };
   const BOOK_COLORS = ["#6a2a2a", "#2a4a66", "#4a5a2a", "#6a5424", "#56285a", "#2a5a52"];
   let floorIdx = 0;
@@ -436,14 +436,21 @@
       }
       shuffle(celdas);
       const cuantos = Math.min(celdas.length, 2 + ((Math.random() * 3) | 0));
-      for (let i = 0; i < cuantos; i++) {
-        const gx = celdas[i][0], gy = celdas[i][1], z = Math.random();
+      const puestos = [];
+      for (let i = 0; i < celdas.length && puestos.length < cuantos; i++) {
+        const gx = celdas[i][0], gy = celdas[i][1];
+        if (puestos.some(q => Math.abs(q[0] - gx) + Math.abs(q[1] - gy) < 2)) continue;   // nunca pegados: siempre se puede pasar entre ellos
+        const z = Math.random(), h = Math.random() < 0.5;
         const tipo = tema === "enfermeria" ? (z < 0.65 ? "camilla" : "mesa")
                    : tema === "library"    ? (z < 0.6 ? "mesa" : "caja")
                    :                         (z < 0.6 ? "caja" : "mesa");
-        const cc = cellCenter(gx, gy);
-        furniture.push({ x: cc.x, y: cc.y, gx: gx, gy: gy, type: tipo, rot: Math.random() < 0.5 ? 0 : 1, seed: Math.random() });
-        used.add(gx + "," + gy);
+        const seed = Math.random(), cc = cellCenter(gx, gy);
+        let hw, hh;                                                                        // mitad del tamaño real dibujado
+        if (tipo === "camilla") { hw = h ? 20 : 9.5; hh = h ? 9.5 : 20; }
+        else if (tipo === "mesa") { hw = h ? 19 : 13.5; hh = h ? 12.5 : 18; }
+        else { const t2 = (26 + ((seed * 8) | 0)) / 2; hw = t2; hh = t2; }
+        furniture.push({ x: cc.x, y: cc.y, gx: gx, gy: gy, type: tipo, rot: h ? 1 : 0, seed: seed, hw: hw, hh: hh });
+        used.add(gx + "," + gy); puestos.push([gx, gy]);
       }
     }
     // Ningún mueble puede dejar una zona incomunicada
@@ -758,9 +765,10 @@
   }
 
   // ---------------------------------------------------------------- Update
-  function solidAt(px, py) {   // pared o mueble
+  function solidAt(px, py) {   // pared o mueble (el mueble ocupa solo su tamaño real, no la casilla entera)
     if (isWall(px, py)) return true;
-    return furnSet.has(Math.floor(px / TILE) + "," + Math.floor(py / TILE));
+    for (const f of furniture) if (Math.abs(px - f.x) < f.hw && Math.abs(py - f.y) < f.hh) return true;
+    return false;
   }
   function tryMove(obj, nx, ny, r) {
     if (!solidAt(nx + (obj.vx > 0 ? r : -r), obj.y) && !solidAt(nx + (obj.vx > 0 ? r : -r), obj.y - r + 1) && !solidAt(nx + (obj.vx > 0 ? r : -r), obj.y + r - 1)) obj.x = nx;
@@ -928,7 +936,7 @@
   // Se pre-renderiza una textura GRANDE (6x6 casillas) y cada casilla toma su trozo,
   // así el suelo y los muros se ven continuos en vez de bloques repetidos.
   const BIGN = 6, BIG = BIGN * TILE;
-  let texFloor = null, texWallTop = null, texWallFace = null, atlasTheme = null;
+  let texFloor = null, texWallTop = null, texWallFace = null, wallAtlas = null, atlasTheme = null;
   let shadowTop = null, shadowLeft = null, shadowRight = null;
   function srnd(st) { st.s = (st.s * 1664525 + 1013904223) >>> 0; return st.s / 4294967296; }
   function rgb(r, g, b) { return "rgb(" + Math.max(0, Math.min(255, r | 0)) + "," + Math.max(0, Math.min(255, g | 0)) + "," + Math.max(0, Math.min(255, b | 0)) + ")"; }
@@ -990,7 +998,7 @@
     for (let k = 0; k < 1400; k++) { g.fillStyle = "rgba(255,255,255," + (srnd(st) * 0.03).toFixed(3) + ")"; g.fillRect(srnd(st) * BIG, srnd(st) * BIG, 1, 1); }
   }
   function drawWallFaceBig(g, TH, name, st) {
-    const fy = TILE * 0.34, fh = TILE - fy;
+    const fy = TILE * 0.62, fh = TILE - fy;
     if (name === "library") {                                   // estantería continua a lo largo del muro
       g.fillStyle = "#3a2615"; g.fillRect(0, fy, BIG, fh);
       g.fillStyle = "#17100a"; g.fillRect(0, fy, BIG, 3);
@@ -1042,7 +1050,39 @@
     drawWallTopBig(w.getContext("2d"), TH, name, { s: 777 }); texWallTop = w;
     const fa = document.createElement("canvas"); fa.width = BIG; fa.height = TILE;
     drawWallFaceBig(fa.getContext("2d"), TH, name, { s: 4242 }); texWallFace = fa;
+    buildWallAtlas(TH);
     atlasTheme = name;
+  }
+  // Pre-hornea cada muro con las ESQUINAS REDONDEADAS según sus vecinos, para que no parezcan
+  // cubos: un muro suelto queda como columna redonda, el final de un muro como punta redondeada.
+  function buildWallAtlas(TH) {
+    const c = document.createElement("canvas");
+    c.width = 16 * TILE; c.height = 6 * TILE;
+    const g = c.getContext("2d");
+    for (let pos = 0; pos < 6; pos++) {
+      const sx = pos * TILE, sy = pos * TILE, oy = pos * TILE;
+      for (let combo = 0; combo < 16; combo++) {
+        const ox = combo * TILE;
+        const up = !!(combo & 1), rt = !!(combo & 2), dn = !!(combo & 4), lf = !!(combo & 8);
+        g.save();
+        const solo = !up && !rt && !dn && !lf, R = solo ? 19 : 11;
+        const tl = (!up && !lf) ? R : 0, tr = (!up && !rt) ? R : 0, br = (!dn && !rt) ? R : 0, bl = (!dn && !lf) ? R : 0;
+        g.beginPath();
+        g.moveTo(ox + tl, oy);
+        g.lineTo(ox + TILE - tr, oy); if (tr) g.quadraticCurveTo(ox + TILE, oy, ox + TILE, oy + tr);
+        g.lineTo(ox + TILE, oy + TILE - br); if (br) g.quadraticCurveTo(ox + TILE, oy + TILE, ox + TILE - br, oy + TILE);
+        g.lineTo(ox + bl, oy + TILE); if (bl) g.quadraticCurveTo(ox, oy + TILE, ox, oy + TILE - bl);
+        g.lineTo(ox, oy + tl); if (tl) g.quadraticCurveTo(ox, oy, ox + tl, oy);
+        g.closePath(); g.clip();
+        g.drawImage(texWallTop, sx, sy, TILE, TILE, ox, oy, TILE, TILE);
+        if (!up) { g.fillStyle = TH.wallTop; g.fillRect(ox, oy, TILE, 5); g.fillStyle = "rgba(255,255,255,0.07)"; g.fillRect(ox, oy, TILE, 2); }
+        if (!dn) g.drawImage(texWallFace, sx, 0, TILE, TILE, ox, oy, TILE, TILE);
+        if (!lf) { g.fillStyle = "rgba(0,0,0,0.16)"; g.fillRect(ox, oy, 2, TILE); }
+        if (!rt) { g.fillStyle = "rgba(0,0,0,0.16)"; g.fillRect(ox + TILE - 2, oy, 2, TILE); }
+        g.restore();
+      }
+    }
+    wallAtlas = c;
   }
 
   // ---------------------------------------------------------------- Render
@@ -1062,14 +1102,11 @@
       const px = x * TILE, py = y * TILE;
       const sx = (((x % BIGN) + BIGN) % BIGN) * TILE, sy = (((y % BIGN) + BIGN) % BIGN) * TILE;
       if (grid[y][x] === 1) {
-        ctx.drawImage(texWallTop, sx, sy, TILE, TILE, px, py, TILE, TILE);
-        // Bordes SOLO donde el muro linda con suelo: así una pared larga se ve de una pieza
         const wUp = grid[y - 1] && grid[y - 1][x] === 1, wDn = grid[y + 1] && grid[y + 1][x] === 1;
         const wLf = grid[y][x - 1] === 1, wRt = grid[y][x + 1] === 1;
-        if (!wUp) { ctx.fillStyle = TH.wallTop; ctx.fillRect(px, py, TILE, 5); ctx.fillStyle = "rgba(255,255,255,0.07)"; ctx.fillRect(px, py, TILE, 2); }
-        if (!wDn) ctx.drawImage(texWallFace, sx, 0, TILE, TILE, px, py, TILE, TILE);   // frente del muro
-        if (!wLf) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(px, py, 3, TILE); }
-        if (!wRt) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(px + TILE - 3, py, 3, TILE); }
+        const combo = (wUp ? 1 : 0) | (wRt ? 2 : 0) | (wDn ? 4 : 0) | (wLf ? 8 : 0);
+        ctx.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);          // suelo real bajo las esquinas
+        ctx.drawImage(wallAtlas, combo * TILE, (((x % BIGN) + BIGN) % BIGN) * TILE, TILE, TILE, px, py, TILE, TILE);
       } else {
         ctx.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);
         if (grid[y - 1] && grid[y - 1][x] === 1) ctx.drawImage(shadowTop, px, py);
