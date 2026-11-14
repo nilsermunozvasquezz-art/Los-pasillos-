@@ -511,8 +511,11 @@
   }
   function thunder() {
     if (!actx) return;
-    noise(1.7, 0.4, "lowpass", 140); setTimeout(() => noise(0.9, 0.28, "lowpass", 90), 220);
-    beep(55, 0.45, "sawtooth", 0.22);
+    // Trueno audible también en parlantes de celular (más cuerpo medio, más volumen)
+    noise(0.22, 0.5, "bandpass", 1300);              // chasquido
+    noise(1.9, 0.55, "lowpass", 430);                // retumbo con cuerpo
+    setTimeout(() => noise(1.1, 0.4, "lowpass", 280), 240);
+    setTimeout(() => noise(0.6, 0.28, "lowpass", 190), 650);
   }
   function strike() {
     lightningUntil = performance.now() + 200;
@@ -527,8 +530,8 @@
     weatherTimer = setTimeout(weatherLoop, 28000 + Math.random() * 46000);
   }
   function thunderLoop() {
-    if (running && !paused && weather.raining && weather.intensity > 0.4 && Math.random() < 0.65) strike();
-    thunderTimer = setTimeout(thunderLoop, 11000 + Math.random() * 22000);
+    if (running && !paused && weather.raining && weather.intensity > 0.3 && Math.random() < 0.72) strike();
+    thunderTimer = setTimeout(thunderLoop, 9000 + Math.random() * 16000);
   }
   function applyAudioSettings() { if (!actx) return; musicGain.gain.value = settings.music; sfxGain.gain.value = settings.sfx; }
   const MUSIC_CHORDS = [[110, 130.81, 164.81], [87.31, 130.81, 174.61], [73.42, 110, 146.83], [82.41, 123.47, 164.81]];
@@ -643,15 +646,25 @@
     if (!isWall(obj.x, ny + (obj.vy > 0 ? r : -r)) && !isWall(obj.x - r + 1, ny + (obj.vy > 0 ? r : -r)) && !isWall(obj.x + r - 1, ny + (obj.vy > 0 ? r : -r))) obj.y = ny;
   }
   function enemyRepath() {
-    const ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE); let tx, ty;
+    const ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE);
     const now = performance.now();
+    // BFS desde el monstruo (con distancias) para reusarlo en todos los casos
+    const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    const dmap = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
+    dmap[ey][ex] = 0; const q = [[ex, ey]]; let h = 0;
+    while (h < q.length) { const [x, y] = q[h++]; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && dmap[ny][nx] === -1) { dmap[ny][nx] = dmap[y][x] + 1; prev[ny][nx] = [x, y]; q.push([nx, ny]); } } }
+    let tx, ty;
     if (now < enemy.lureUntil && enemy.lurePos) { tx = Math.floor(enemy.lurePos.x / TILE); ty = Math.floor(enemy.lurePos.y / TILE); }
     else if (enemy.chasing || now < enemy.alertUntil) { tx = Math.floor(player.x / TILE); ty = Math.floor(player.y / TILE); }
-    else { const c = floorCells(); const d = c[(Math.random() * c.length) | 0]; tx = d[0]; ty = d[1]; }
-    const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null)), seen = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
-    seen[ey][ex] = true; const q = [[ex, ey]]; let h = 0, found = false;
-    while (h < q.length) { const [x, y] = q[h++]; if (x === tx && y === ty) { found = true; break; } for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && !seen[ny][nx]) { seen[ny][nx] = true; prev[ny][nx] = [x, y]; q.push([nx, ny]); } } }
-    const path = []; if (found) { let cur = [tx, ty]; while (cur && !(cur[0] === ex && cur[1] === ey)) { path.push(cellCenter(cur[0], cur[1])); cur = prev[cur[1]][cur[0]]; } path.reverse(); }
+    else {
+      // Deambular: un destino CERCANO y alcanzable (distancia 4–10), no cualquier punto del mapa
+      const band = [], far = [];
+      for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) { const d = dmap[y][x]; if (d >= 4 && d <= 10) band.push([x, y]); else if (d > 10) far.push([x, y]); }
+      const pool = band.length ? band : (far.length ? far : [[ex, ey]]);
+      const c = pool[(Math.random() * pool.length) | 0]; tx = c[0]; ty = c[1];
+    }
+    const path = [];
+    if (tx >= 0 && ty >= 0 && dmap[ty] && dmap[ty][tx] >= 0) { let cur = [tx, ty]; while (cur && !(cur[0] === ex && cur[1] === ey)) { path.push(cellCenter(cur[0], cur[1])); cur = prev[cur[1]][cur[0]]; } path.reverse(); }
     enemy.path = path;
   }
 
