@@ -758,6 +758,7 @@
     startScreen.classList.add("hidden"); storyScreen.classList.add("hidden"); overScreen.classList.add("hidden"); winScreen.classList.add("hidden");
     elNote.classList.remove("show"); document.getElementById("noteCount").textContent = "0"; document.getElementById("stamWrap").style.display = "none";
     document.getElementById("hud").style.display = "flex";
+    if ("ontouchstart" in window) document.getElementById("touch").style.display = "block"; // restaurar controles tactiles al empezar
     setup(); updateBatt(); updateSan(); running = true; last = performance.now();
     if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop();
   }
@@ -864,6 +865,7 @@
     cine = { t0: performance.now(), lastIdx: -1, scenes: CINE_SCENES, onDone };
     document.getElementById("cineSkip").style.display = "block";
     document.getElementById("hud").style.display = "none";
+    document.getElementById("touch").style.display = "none"; // ocultar joystick y botones (solo queda SALTAR)
   }
   function endCinematic() {
     if (!cine) return; const cb = cine.onDone; cine = null;
