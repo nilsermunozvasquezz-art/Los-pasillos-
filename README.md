@@ -19,6 +19,8 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - **La luz atrae al monstruo**: apágala para pasar desapercibido · pilas, armarios, trampas
 - Ítems: llave maestra (+2), señuelos (distraen al monstruo), botas (correr)
 - Barra de **cordura** (distorsiona la pantalla), **huellas** y gruñido direccional
+- **Focos en las paredes** que parpadean y dan luz alrededor
+- **Clima al azar**: lluvia con sonido, truenos y relámpagos que iluminan la escena
 - **Eventos de guion**: sustos, mensajes, sangre en paredes, apagones de luz
 - **Notas** con historia + **final secreto** si las reúnes todas
 - **Logros**, **tabla de récords** por dificultad, **dificultades** (Fácil/Normal/Pesadilla)

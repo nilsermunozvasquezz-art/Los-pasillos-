@@ -314,7 +314,8 @@
   // ---------------------------------------------------------------- Estado
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, stepAt: 0 };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 };
-  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], decoysActive = [], bloodDecals = [];
+  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], decoysActive = [], bloodDecals = [], wallLights = [];
+  let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0;
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
   let collected = 0, notesFound = 0, notesPlaced = 0;
   let running = false, paused = false, startTime = 0, elapsed = 0, fearPulse = 0;
@@ -324,6 +325,8 @@
   let newRecord = false, newAch = [];
   let runSprinted = false, runChased = false;
   let cine = null;
+
+  for (let i = 0; i < 160; i++) rainDrops.push({ x: Math.random() * VIEW_W, y: Math.random() * VIEW_H, len: 8 + Math.random() * 14, sp: 7 + Math.random() * 7 });
 
   function cellCenter(cx, cy) { return { x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2 }; }
   function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
@@ -371,6 +374,21 @@
     let es = cells[(cells.length * 0.6) | 0]; for (const [x, y] of cells) if (sd[y][x] > ROWS * 0.6) { es = [x, y]; break; }
     const ec = cellCenter(es[0], es[1]);
     Object.assign(enemy, { x: ec.x, y: ec.y, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 });
+
+    // Focos en las paredes (celdas de pared con un pasillo al lado)
+    wallLights = [];
+    const wlCands = [];
+    for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) {
+      if (grid[y][x] !== 1) continue;
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { if (grid[y + dy] && grid[y + dy][x + dx] === 0) { wlCands.push([x, y, dx, dy]); break; } }
+    }
+    shuffle(wlCands);
+    for (const [x, y, dx, dy] of wlCands) {
+      if (wallLights.length >= 11) break;
+      const cx = x * TILE + TILE / 2, cy = y * TILE + TILE / 2, wx = cx + dx * TILE * 0.42, wy = cy + dy * TILE * 0.42;
+      if (wallLights.some(w => Math.hypot(w.x - wx, w.y - wy) < TILE * 2.4)) continue;
+      wallLights.push({ x: wx, y: wy, dir: [dx, dy], on: true, toggleAt: 0, flick: Math.random() < 0.4 });
+    }
 
     decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; fearPulse = 0;
     glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0;
@@ -470,7 +488,7 @@
   }
 
   // ---------------------------------------------------------------- Audio
-  let actx = null, droneGain = null, musicGain = null, sfxGain = null, heartTimer = null, ambTimer = null, growlTimer = null, musicTimer = null, evTimer = null;
+  let actx = null, droneGain = null, musicGain = null, sfxGain = null, rainGain = null, rainSource = null, heartTimer = null, ambTimer = null, growlTimer = null, musicTimer = null, evTimer = null, weatherTimer = null, thunderTimer = null;
   function initAudio() {
     if (actx) return;
     try {
@@ -481,8 +499,36 @@
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
       droneGain = actx.createGain(); droneGain.gain.value = 0.045;
       o1.connect(droneGain); o2.connect(droneGain); droneGain.connect(musicGain); o1.start(); o2.start();
+      // Lluvia: loop de ruido filtrado, controlado por rainGain
+      rainGain = actx.createGain(); rainGain.gain.value = 0;
+      const rbuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate), rd = rbuf.getChannelData(0);
+      for (let i = 0; i < rd.length; i++) rd[i] = (Math.random() * 2 - 1) * 0.5;
+      rainSource = actx.createBufferSource(); rainSource.buffer = rbuf; rainSource.loop = true;
+      const rf = actx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 2400;
+      rainSource.connect(rf); rf.connect(rainGain); rainGain.connect(sfxGain); rainSource.start();
       if (!musicTimer) musicLoop();
     } catch (e) { actx = null; }
+  }
+  function thunder() {
+    if (!actx) return;
+    noise(1.7, 0.4, "lowpass", 140); setTimeout(() => noise(0.9, 0.28, "lowpass", 90), 220);
+    beep(55, 0.45, "sawtooth", 0.22);
+  }
+  function strike() {
+    lightningUntil = performance.now() + 200;
+    setTimeout(() => { lightningUntil = performance.now() + 150; }, 170);
+    setTimeout(thunder, 350 + Math.random() * 1500);
+  }
+  function weatherLoop() {
+    if (running && !paused) {
+      if (weather.raining) { if (Math.random() < 0.45) weather.raining = false; }
+      else if (Math.random() < 0.45) weather.raining = true;
+    }
+    weatherTimer = setTimeout(weatherLoop, 28000 + Math.random() * 46000);
+  }
+  function thunderLoop() {
+    if (running && !paused && weather.raining && weather.intensity > 0.4 && Math.random() < 0.65) strike();
+    thunderTimer = setTimeout(thunderLoop, 11000 + Math.random() * 22000);
   }
   function applyAudioSettings() { if (!actx) return; musicGain.gain.value = settings.music; sfxGain.gain.value = settings.sfx; }
   const MUSIC_CHORDS = [[110, 130.81, 164.81], [87.31, 130.81, 174.61], [73.42, 110, 146.83], [82.41, 123.47, 164.81]];
@@ -641,6 +687,15 @@
       if (Math.random() < prob) { glitchUntil = now + 90 + Math.random() * 380; glitchLevel = 0.1 + Math.random() * 0.35; beep(120, 0.05, "square", 0.07); }
     }
 
+    // Focos de pared (parpadean / se prenden y apagan)
+    for (const w of wallLights) if (now >= w.toggleAt) {
+      if (w.flick) { w.on = Math.random() < 0.72; w.toggleAt = now + 80 + Math.random() * 480; }
+      else { w.on = Math.random() < 0.86; w.toggleAt = now + 1500 + Math.random() * 4200; }
+    }
+    // Clima (lluvia que sube/baja de intensidad)
+    weather.intensity += ((weather.raining ? 1 : 0) - weather.intensity) * Math.min(1, dtSec * 0.6);
+    if (actx && rainGain) rainGain.gain.setTargetAtTime(weather.intensity * 0.5, actx.currentTime, 0.4);
+
     nearLocker = null;
     for (const L of lockers) if (dist(player.x, player.y, L.x, L.y) < 34) { nearLocker = L; break; }
     updatePrompt();
@@ -726,6 +781,7 @@
 
     for (const f of enemy.trail) { const age = (now - f.t) / 4000; if (age >= 1) continue; ctx.fillStyle = "rgba(30,10,14," + (0.5 * (1 - age)).toFixed(3) + ")"; ctx.beginPath(); ctx.ellipse(f.x - 3, f.y, 2.6, 4, 0, 0, 7); ctx.ellipse(f.x + 3, f.y, 2.6, 4, 0, 0, 7); ctx.fill(); }
 
+    for (const w of wallLights) drawWallLight(w);
     drawDoor();
     const t = now / 500;
     for (const tr of traps) drawTrap(tr);
@@ -745,6 +801,15 @@
     drawLighting(shx, shy, now);
 
     if (now < flashWhiteUntil) { ctx.fillStyle = "rgba(255,245,230,0.5)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    if (now < lightningUntil) { ctx.fillStyle = "rgba(210,225,255," + (0.4 + Math.random() * 0.25).toFixed(3) + ")"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+
+    // Lluvia (pantalla)
+    if (weather.intensity > 0.02) {
+      const n = (rainDrops.length * weather.intensity) | 0;
+      ctx.save(); ctx.strokeStyle = "rgba(175,195,225," + (0.32 * weather.intensity).toFixed(3) + ")"; ctx.lineWidth = 1;
+      for (let i = 0; i < n; i++) { const d = rainDrops[i]; d.y += d.sp; d.x += d.sp * 0.28; if (d.y > VIEW_H) { d.y = -d.len; d.x = Math.random() * VIEW_W; } if (d.x > VIEW_W) d.x -= VIEW_W; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * 0.28, d.y - d.len); ctx.stroke(); }
+      ctx.restore();
+    }
 
     const px2 = VIEW_W / 2 + shx, py2 = VIEW_H / 2 + shy;
     const danger = Math.max(fearPulse, player.sanity < 45 ? (45 - player.sanity) / 45 * 0.7 : 0);
@@ -782,6 +847,17 @@
       const gc = mctx.createRadialGradient(cx, cy, ambR * 0.5, cx, cy, coneVision);
       gc.addColorStop(0, "rgba(255,244,214,1)"); gc.addColorStop(0.55, "rgba(240,224,180,0.72)"); gc.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = gc; mctx.fillRect(cx - coneVision, cy - coneVision, coneVision * 2, coneVision * 2); mctx.restore();
+    }
+    // Luz de los focos de pared encendidos
+    const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
+    for (const w of wallLights) {
+      if (!w.on) continue;
+      const sx = w.x - camX + shx, sy = w.y - camY + shy;
+      if (sx < -80 || sy < -80 || sx > VIEW_W + 80 || sy > VIEW_H + 80) continue;
+      const R = 64 * (0.85 + Math.random() * 0.15);
+      const g = mctx.createRadialGradient(sx, sy, 0, sx, sy, R);
+      g.addColorStop(0, "rgba(255,220,150,0.8)"); g.addColorStop(0.6, "rgba(200,160,90,0.3)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      mctx.fillStyle = g; mctx.beginPath(); mctx.arc(sx, sy, R, 0, 7); mctx.fill();
     }
     ctx.globalCompositeOperation = "multiply"; ctx.drawImage(mask, 0, 0); ctx.globalCompositeOperation = "source-over";
   }
@@ -860,6 +936,13 @@
     ctx.fillStyle = tr.triggered ? "#7a2222" : "#8a8a8a";
     for (let a = 0; a < 8; a++) { const ang = a / 8 * Math.PI * 2, ix = tr.x + Math.cos(ang) * 6, iy = tr.y + Math.sin(ang) * 6; ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(tr.x + Math.cos(ang - 0.2) * 10, tr.y + Math.sin(ang - 0.2) * 10); ctx.lineTo(tr.x + Math.cos(ang + 0.2) * 10, tr.y + Math.sin(ang + 0.2) * 10); ctx.closePath(); ctx.fill(); }
     ctx.restore();
+  }
+  function drawWallLight(w) {
+    const [dx, dy] = w.dir;
+    ctx.fillStyle = "#2a2620"; ctx.fillRect(w.x - 5, w.y - 5, 10, 10);
+    ctx.fillStyle = "#15120e"; ctx.fillRect(w.x + dx * 5 - 4, w.y + dy * 5 - 4, 8, 8);
+    if (w.on) { ctx.save(); ctx.shadowColor = "rgba(255,220,150,0.9)"; ctx.shadowBlur = 14; ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(w.x, w.y, 3, 0, 7); ctx.fill(); ctx.restore(); }
+    else { ctx.fillStyle = "#4a4238"; ctx.beginPath(); ctx.arc(w.x, w.y, 3, 0, 7); ctx.fill(); }
   }
   function drawMonsterFace(sc) {
     ctx.save();
@@ -992,7 +1075,9 @@
     document.getElementById("hud").style.display = "flex";
     if ("ontouchstart" in window) document.getElementById("touch").style.display = "block";
     newRun(); running = true; paused = false; last = performance.now();
+    weather.raining = false; weather.intensity = 0;
     if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop(); if (!evTimer) eventLoop();
+    if (!weatherTimer) weatherLoop(); if (!thunderTimer) thunderLoop();
   }
   function descend() {
     running = false; floorIdx++;
