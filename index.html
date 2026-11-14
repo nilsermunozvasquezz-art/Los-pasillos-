@@ -289,23 +289,64 @@
   let grid = [], rooms = [];
   function generateMaze() {
     grid = Array.from({ length: ROWS }, () => Array(COLS).fill(1));
-    const stack = [[1, 1]]; grid[1][1] = 0;
+    rooms = [];
     const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+    // 1) Primero las HABITACIONES: rectángulos reservados (interior + muro alrededor)
+    const reservado = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    for (let intento = 0; intento < 160 && rooms.length < 3; intento++) {
+      const rw = 3 + 2 * ((Math.random() * 2) | 0), rh = 3 + 2 * ((Math.random() * 2) | 0);
+      const rx = 1 + 2 * ((Math.random() * ((COLS - rw - 2) / 2)) | 0), ry = 1 + 2 * ((Math.random() * ((ROWS - rh - 2) / 2)) | 0);
+      if (rx < 3 && ry < 3) continue;                                   // deja libre la zona de inicio
+      if (rx + rw > COLS - 2 || ry + rh > ROWS - 2) continue;
+      let choca = false;
+      for (let y = ry - 2; y <= ry + rh + 1 && !choca; y++) for (let x = rx - 2; x <= rx + rw + 1 && !choca; x++)
+        if (y >= 0 && x >= 0 && y < ROWS && x < COLS && reservado[y][x]) choca = true;
+      if (choca) continue;
+      for (let y = ry - 1; y <= ry + rh; y++) for (let x = rx - 1; x <= rx + rw; x++)
+        if (y >= 0 && x >= 0 && y < ROWS && x < COLS) reservado[y][x] = true;
+      for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) grid[y][x] = 0;
+      rooms.push({ x: rx, y: ry, w: rw, h: rh, doors: [] });
+    }
+    // 2) El laberinto se genera ALREDEDOR (nunca dentro del muro de una sala)
+    const libre = (x, y) => x > 0 && x < COLS - 1 && y > 0 && y < ROWS - 1 && !reservado[y][x];
+    const vis = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    const stack = [[1, 1]]; grid[1][1] = 0; vis[1][1] = true;
     while (stack.length) {
-      const [cx, cy] = stack[stack.length - 1]; const opts = [];
-      for (const [dx, dy] of dirs) { const nx = cx + dx, ny = cy + dy; if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1 && grid[ny][nx] === 1) opts.push([nx, ny, dx, dy]); }
-      if (opts.length) { const [nx, ny, dx, dy] = opts[(Math.random() * opts.length) | 0]; grid[cy + dy / 2][cx + dx / 2] = 0; grid[ny][nx] = 0; stack.push([nx, ny]); }
+      const c = stack[stack.length - 1], cx = c[0], cy = c[1], opts = [];
+      for (const d of dirs) { const nx = cx + d[0], ny = cy + d[1], mx = cx + d[0] / 2, my = cy + d[1] / 2;
+        if (libre(nx, ny) && libre(mx, my) && !vis[ny][nx]) opts.push([nx, ny, mx, my]); }
+      if (opts.length) { const o = opts[(Math.random() * opts.length) | 0]; grid[o[3]][o[2]] = 0; grid[o[1]][o[0]] = 0; vis[o[1]][o[0]] = true; stack.push([o[0], o[1]]); }
       else stack.pop();
     }
-    for (let i = 0; i < 24; i++) { const x = 1 + 2 * ((Math.random() * ((COLS - 1) / 2)) | 0), y = 1 + 2 * ((Math.random() * ((ROWS - 1) / 2)) | 0); const [dx, dy] = dirs[(Math.random() * 4) | 0], wx = x + dx / 2, wy = y + dy / 2; if (wx > 0 && wx < COLS - 1 && wy > 0 && wy < ROWS - 1) grid[wy][wx] = 0; }
-    // Salas abiertas
-    rooms = [];
-    for (let i = 0; i < 3; i++) {
-      const rw = 3 + ((Math.random() * 3) | 0), rh = 3 + ((Math.random() * 3) | 0);
-      const rx = 2 + ((Math.random() * (COLS - rw - 3)) | 0), ry = 2 + ((Math.random() * (ROWS - rh - 3)) | 0);
-      for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) grid[y][x] = 0;
-      rooms.push({ x: rx, y: ry, w: rw, h: rh });
+    // 3) Pasadizos extra para dar vueltas al laberinto (sin tocar las salas)
+    for (let i = 0; i < 24; i++) {
+      const x = 1 + 2 * ((Math.random() * ((COLS - 1) / 2)) | 0), y = 1 + 2 * ((Math.random() * ((ROWS - 1) / 2)) | 0);
+      const d = dirs[(Math.random() * 4) | 0], wx = x + d[0] / 2, wy = y + d[1] / 2, nx = x + d[0], ny = y + d[1];
+      if (libre(wx, wy) && libre(nx, ny) && grid[y] && grid[y][x] === 0 && grid[ny][nx] === 0) grid[wy][wx] = 0;
     }
+    // 4) Cada habitación se conecta con 1-2 VANOS (ahí van las puertas automáticas)
+    for (const r of rooms) {
+      const cand = [];
+      for (let x = r.x; x < r.x + r.w; x++) {
+        if (grid[r.y - 2] && grid[r.y - 2][x] === 0) cand.push({ gx: x, gy: r.y - 1, horiz: false });
+        if (grid[r.y + r.h + 1] && grid[r.y + r.h + 1][x] === 0) cand.push({ gx: x, gy: r.y + r.h, horiz: false });
+      }
+      for (let y = r.y; y < r.y + r.h; y++) {
+        if (grid[y] && grid[y][r.x - 2] === 0) cand.push({ gx: r.x - 1, gy: y, horiz: true });
+        if (grid[y] && grid[y][r.x + r.w + 1] === 0) cand.push({ gx: r.x + r.w, gy: y, horiz: true });
+      }
+      shuffle(cand);
+      const n = Math.min(cand.length, 1 + ((Math.random() * 2) | 0));
+      for (let i = 0; i < cand.length && r.doors.length < n; i++) {
+        const cd = cand[i];
+        if (r.doors.some(d => Math.abs(d.gx - cd.gx) + Math.abs(d.gy - cd.gy) < 3)) continue;  // vanos separados
+        grid[cd.gy][cd.gx] = 0; r.doors.push(cd);
+      }
+    }
+    // 5) Seguridad: tapia cualquier rincón que quedara incomunicado
+    const d0 = bfsFrom(1, 1);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[y][x] === 0 && d0[y][x] < 0) grid[y][x] = 1;
+    for (let i = rooms.length - 1; i >= 0; i--) if (!rooms[i].doors.length) rooms.splice(i, 1);
   }
   function isWall(px, py) { const gx = Math.floor(px / TILE), gy = Math.floor(py / TILE); if (gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS) return true; return grid[gy][gx] === 1; }
   function floorCells() { const c = []; for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) if (grid[y][x] === 0) c.push([x, y]); return c; }
@@ -402,30 +443,11 @@
       wallLights.push({ x: wx, y: wy, dir: [dx, dy], on: true, toggleAt: 0, flick: Math.random() < 0.4 });
     }
 
-    // Puertas automáticas en los accesos de cada habitación
+    // Las puertas van justo en el vano de entrada de cada habitación
     roomDoors = [];
-    const ocupado = new Set(["1,1", door.gx + "," + door.gy, generator.gx + "," + generator.gy]);
-    for (const r of rooms) {
-      const cand = [];
-      for (let x = r.x; x < r.x + r.w; x++) {
-        if (grid[r.y - 1] && grid[r.y - 1][x] === 0) cand.push([x, r.y, false]);
-        if (grid[r.y + r.h] && grid[r.y + r.h][x] === 0) cand.push([x, r.y + r.h - 1, false]);
-      }
-      for (let y = r.y; y < r.y + r.h; y++) {
-        if (grid[y] && grid[y][r.x - 1] === 0) cand.push([r.x, y, true]);
-        if (grid[y] && grid[y][r.x + r.w] === 0) cand.push([r.x + r.w - 1, y, true]);
-      }
-      shuffle(cand);
-      let puestas = 0;
-      for (const c of cand) {
-        if (puestas >= 2) break;
-        const gx = c[0], gy = c[1], k = gx + "," + gy;
-        if (ocupado.has(k) || !grid[gy] || grid[gy][gx] !== 0) continue;
-        ocupado.add(k);
-        const cc = cellCenter(gx, gy);
-        roomDoors.push({ x: cc.x, y: cc.y, gx: gx, gy: gy, horiz: c[2], open: 0, wasNear: false });
-        puestas++;
-      }
+    for (const r of rooms) for (const d of (r.doors || [])) {
+      const cc = cellCenter(d.gx, d.gy);
+      roomDoors.push({ x: cc.x, y: cc.y, gx: d.gx, gy: d.gy, horiz: d.horiz, open: 0, wasNear: false });
     }
 
     explored = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
