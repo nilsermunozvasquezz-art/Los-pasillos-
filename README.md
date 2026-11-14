@@ -22,7 +22,8 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - **La luz atrae al monstruo**: apágala para pasar desapercibido
 - Enemigo con IA (pathfinding BFS), huellas que deja al caminar y gruñido direccional
 - Barra de **cordura**: baja con el miedo, distorsiona la pantalla; se recupera escondido
-- **Sustos** y sonidos ambientales aleatorios + jumpscare al morir
+- **Sustos** y sonidos ambientales aleatorios
+- Cinemáticas: intro con la historia, final al escapar (amanecer) y al morir (jumpscare)
 - Armarios para esconderte · trampas que lo atraen
 - Ítems: pilas, **llave maestra** (+2), **señuelos** y **botas** (correr)
 - 3 dificultades (Fácil / Normal / Pesadilla)
