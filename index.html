@@ -318,7 +318,7 @@
 
   // ---------------------------------------------------------------- Estado
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0 };
-  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 };
+  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0, stepAt: 0 };
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0;
   let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false;
@@ -385,7 +385,7 @@
 
     let es = cells[(cells.length * 0.6) | 0]; for (const [x, y] of cells) if (sd[y][x] > ROWS * 0.6) { es = [x, y]; break; }
     const ec = cellCenter(es[0], es[1]);
-    Object.assign(enemy, { x: ec.x, y: ec.y, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 });
+    Object.assign(enemy, { x: ec.x, y: ec.y, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0, stepAt: 0 });
 
     // Focos en las paredes (celdas de pared con un pasillo al lado)
     wallLights = [];
@@ -771,8 +771,27 @@
     if (enemy.path.length) {
       const tgt = enemy.path[0], edx = tgt.x - enemy.x, edy = tgt.y - enemy.y, ed = Math.hypot(edx, edy) || 1;
       const esp = ((enemy.chasing || lured) ? diff.chase : diff.enemy) * dt;
-      enemy.x += edx / ed * esp; enemy.y += edy / ed * esp;
-      if (ed < esp + 1) enemy.path.shift();
+      // Llega EXACTO al centro de la casilla y recién ahí gira: así nunca recorta esquinas ni cruza paredes
+      if (ed <= esp) { enemy.x = tgt.x; enemy.y = tgt.y; enemy.path.shift(); }
+      else { enemy.x += edx / ed * esp; enemy.y += edy / ed * esp; }
+    }
+    // Red de seguridad: si alguna vez quedara dentro de una pared, vuelve al pasillo más cercano
+    if (isWall(enemy.x, enemy.y)) {
+      let bx = enemy.x, by = enemy.y, bd = Infinity;
+      for (let yy = 1; yy < ROWS - 1; yy++) for (let xx = 1; xx < COLS - 1; xx++) {
+        if (grid[yy][xx] !== 0) continue;
+        const cc = cellCenter(xx, yy), d2 = (cc.x - enemy.x) * (cc.x - enemy.x) + (cc.y - enemy.y) * (cc.y - enemy.y);
+        if (d2 < bd) { bd = d2; bx = cc.x; by = cc.y; }
+      }
+      enemy.x = bx; enemy.y = by; enemy.path = []; enemy.repathT = 0;
+    }
+    // Pasos del monstruo: SIEMPRE lo oyes acercarse (no puede aparecer en silencio detrás de ti)
+    if (!player.hidden && dToP < 340 && now >= enemy.stepAt) {
+      const vol = (1 - dToP / 340) * 0.22 + 0.035;
+      const pan = Math.max(-1, Math.min(1, (enemy.x - player.x) / 260));
+      noise(0.07, vol, "lowpass", 230, pan);
+      setTimeout(() => noise(0.035, vol * 0.5, "bandpass", 1500, pan), 25);
+      enemy.stepAt = now + ((enemy.chasing || lured) ? 300 : 520);
     }
     enemy.trailT -= dt;
     if (enemy.trailT <= 0) { enemy.trail.push({ x: enemy.x, y: enemy.y, t: now }); if (enemy.trail.length > 26) enemy.trail.shift(); enemy.trailT = 10; }
