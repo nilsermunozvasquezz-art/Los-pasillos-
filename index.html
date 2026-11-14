@@ -424,7 +424,7 @@
   function bindBtn(id, fn) { const el = document.getElementById(id); el.addEventListener("touchstart", e => { e.preventDefault(); if (running && !paused) fn(); }); el.addEventListener("mousedown", e => { e.preventDefault(); if (running && !paused) fn(); }); }
   bindBtn("actionBtn", interact); bindBtn("lightBtn", toggleLight); bindBtn("decoyBtn", throwDecoy);
   document.getElementById("pauseBtn").addEventListener("click", () => { if (running) togglePause(); });
-  if ("ontouchstart" in window) { document.getElementById("touch").style.display = "block"; document.getElementById("startHint").textContent = "Joystick + botones · Sonido 🎧"; }
+  if ("ontouchstart" in window) { document.getElementById("startHint").textContent = "Joystick + botones · Sonido 🎧"; } // los controles se muestran al empezar el juego, no en el menú
 
   // Gamepad
   let gp = { x: 0, y: 0, sprint: false }, gpPrev = [];
