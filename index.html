@@ -521,9 +521,11 @@
       masterGain = actx.createGain(); masterGain.gain.value = 0.92;
       masterGain.connect(tone); tone.connect(comp); comp.connect(actx.destination);
       musicGain = actx.createGain(); musicGain.gain.value = settings.music;
-      const mLp = actx.createBiquadFilter(); mLp.type = "lowpass"; mLp.frequency.value = 1500; mLp.Q.value = 0.7;
+      const mLp = actx.createBiquadFilter(); mLp.type = "lowpass"; mLp.frequency.value = 1050; mLp.Q.value = 0.7;
       musicGain.connect(mLp); mLp.connect(masterGain);   // la música va filtrada: nada de agudos chillones
-      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx; sfxGain.connect(masterGain);
+      sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx;
+      const sLp = actx.createBiquadFilter(); sLp.type = "lowpass"; sLp.frequency.value = 2400; sLp.Q.value = 0.7;
+      sfxGain.connect(sLp); sLp.connect(masterGain);   // los efectos también van filtrados
       const o1 = actx.createOscillator(), o2 = actx.createOscillator();
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
       droneGain = actx.createGain(); droneGain.gain.value = 0.045;
@@ -569,7 +571,7 @@
   let musicIdx = 0;
   function playPad(freqs, dur, vol) {
     if (!actx) return; const t = actx.currentTime;
-    for (const f of freqs) for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.28]]) {
+    for (const f of freqs) for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.18]]) {
       const o = actx.createOscillator(), g = actx.createGain();
       o.type = layer[0]; o.frequency.value = f + layer[1]; g.gain.value = 0; o.connect(g); g.connect(musicGain);
       g.gain.linearRampToValueAtTime(layer[2], t + dur * 0.3); g.gain.linearRampToValueAtTime(layer[2] * 0.8, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
@@ -579,7 +581,7 @@
   function playMelodyNote(f, delay, vol) {
     setTimeout(() => {
       if (!actx) return; const o = actx.createOscillator(), g = actx.createGain(), lp = actx.createBiquadFilter();
-      lp.type = "lowpass"; lp.frequency.value = 850; lp.Q.value = 0.6; o.type = "sine"; o.frequency.value = f; g.gain.value = 0;
+      lp.type = "lowpass"; lp.frequency.value = 700; lp.Q.value = 0.6; o.type = "sine"; o.frequency.value = f; g.gain.value = 0;
       o.connect(lp); lp.connect(g); g.connect(musicGain); const t = actx.currentTime;
       g.gain.linearRampToValueAtTime(vol, t + 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2); o.start(t); o.stop(t + 2.3);
     }, delay);
@@ -599,7 +601,7 @@
     o.type = "sine"; o.frequency.setValueAtTime(run ? 200 : 155, t); o.frequency.exponentialRampToValueAtTime(run ? 72 : 55, t + 0.09);
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(run ? 0.24 : 0.16, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + (run ? 0.12 : 0.15));
     o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + 0.17);
-    noise(run ? 0.05 : 0.055, run ? 0.06 : 0.05, "bandpass", run ? 1500 : 850);
+    noise(run ? 0.05 : 0.055, run ? 0.045 : 0.035, "lowpass", run ? 700 : 520);
   }
   function beep(freq, dur, type, vol) {
     if (!actx) return;
@@ -624,7 +626,8 @@
     const o = actx.createOscillator(), g = actx.createGain(), lfo = actx.createOscillator(), lg = actx.createGain();
     o.type = "sawtooth"; o.frequency.value = 68 + Math.random() * 18;
     lfo.frequency.value = 17; lg.gain.value = 22; lfo.connect(lg); lg.connect(o.frequency); lfo.start();
-    g.gain.value = 0; o.connect(g); let out = g;
+    const glp = actx.createBiquadFilter(); glp.type = "lowpass"; glp.frequency.value = 320; glp.Q.value = 0.7; // quita el rasposo de la sierra
+    g.gain.value = 0; o.connect(glp); glp.connect(g); let out = g;
     if (actx.createStereoPanner) { const pn = actx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(pn); out = pn; }
     out.connect(sfxGain);
     const t = actx.currentTime; g.gain.linearRampToValueAtTime(vol, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5); o.start(t); o.stop(t + 0.55); lfo.stop(t + 0.55);
@@ -797,8 +800,8 @@
     if (!player.hidden && dToP < 340 && now >= enemy.stepAt) {
       const vol = (1 - dToP / 340) * 0.22 + 0.035;
       const pan = Math.max(-1, Math.min(1, (enemy.x - player.x) / 260));
-      noise(0.07, vol, "lowpass", 230, pan);
-      setTimeout(() => noise(0.035, vol * 0.45, "bandpass", 900, pan), 25);
+      noise(0.07, vol, "lowpass", 190, pan);
+      setTimeout(() => noise(0.03, vol * 0.3, "lowpass", 520, pan), 25);
       enemy.stepAt = now + ((enemy.chasing || lured) ? 300 : 520);
     }
     enemy.trailT -= dt;
