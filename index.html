@@ -137,6 +137,7 @@
       <button class="diffBtn" data-diff="pesadilla">Pesadilla</button>
     </div>
     <div class="best" id="bestStart"></div>
+    <button class="main" id="continueBtn" style="display:none; border-color:#4a8a5a">Continuar</button>
     <button class="main" id="startBtn">Entrar</button>
     <div class="menuRow">
       <button class="main alt" id="howBtn">Cómo jugar</button>
@@ -243,10 +244,12 @@
   const FLOORS = [
     { name: "El Complejo", theme: "complex" },
     { name: "La Biblioteca", theme: "library" },
+    { name: "La Enfermería", theme: "enfermeria" },
   ];
   const THEMES = {
     complex: { wall: "#14161c", wallTop: "#20242e", wallBot: "#0b0c10", fBase: 34, fTint: [9, 2, -4], decor: "grime" },
     library: { wall: "#241a10", wallTop: "#3a2a1a", wallBot: "#140d06", fBase: 40, fTint: [16, 7, -5], decor: "books" },
+    enfermeria: { wall: "#262e2a", wallTop: "#36423c", wallBot: "#121814", fBase: 44, fTint: [2, 7, 2], decor: "tiles" },
   };
   const BOOK_COLORS = ["#6a2a2a", "#2a4a66", "#4a5a2a", "#6a5424", "#56285a", "#2a5a52"];
   let floorIdx = 0;
@@ -316,8 +319,9 @@
   // ---------------------------------------------------------------- Estado
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0 };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, trail: [], trailT: 0 };
-  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], decoysActive = [], bloodDecals = [], wallLights = [];
+  let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0;
+  let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false;
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
   let collected = 0, notesFound = 0, notesPlaced = 0;
   let running = false, paused = false, startTime = 0, elapsed = 0, fearPulse = 0;
@@ -368,6 +372,10 @@
     boots = player.hasBoots ? [] : pickSpread(nearOrder, N_BOOTS, 3, used).map(mk);
     decoyPickups = pickSpread(nearOrder, N_DECOY_PICKUPS, 3, used).map(mk);
     radars = pickSpread(nearOrder, N_RADARS, 3, used).map(mk);
+    mapItems = pickSpread(nearOrder, 1, 3, used).map(mk);
+    // Generador (objetivo extra: da energía a la puerta)
+    const gcell = (pickSpread(farOrder, 1, 3, used)[0]) || [1, 1];
+    const gc = cellCenter(gcell[0], gcell[1]); generator = { x: gc.x, y: gc.y, gx: gcell[0], gy: gcell[1], on: false };
     const notePool = NOTE_TEXTS.slice(); shuffle(notePool);
     notes = pickSpread(nearOrder, N_NOTES, 3, used).map((c, i) => { const o = mk(c); o.text = notePool[i % notePool.length]; return o; });
     notesPlaced += notes.length;
@@ -393,7 +401,8 @@
       wallLights.push({ x: wx, y: wy, dir: [dx, dy], on: true, toggleAt: 0, flick: Math.random() < 0.4 });
     }
 
-    decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; fearPulse = 0;
+    explored = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+    decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; nearGen = false; fearPulse = 0;
     glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0; radarUntil = 0;
     document.getElementById("stamWrap").style.display = player.hasBoots ? "flex" : "none";
     updateHud(); updateBatt(); updateSan(); updateFloorHud();
@@ -478,6 +487,7 @@
   }
   function interact() {
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
+    if (nearGen && !generator.on) { generator.on = true; nearGen = false; beep(90, 0.3, "sawtooth", 0.2); setTimeout(() => beep(180, 0.25, "square", 0.14), 160); setTimeout(() => beep(300, 0.2, "square", 0.12), 340); for (const w of wallLights) { w.on = true; w.toggleAt = performance.now() + 600; } flashMsg("¡Generador encendido! La puerta tiene energía"); return; }
     if (nearLocker) { player.hidden = true; player.x = nearLocker.x; player.y = nearLocker.y; beep(200, 0.2, "sine", 0.12); flashMsg("Te escondes… conten la respiración"); }
   }
   function throwDecoy() {
@@ -720,8 +730,13 @@
     weather.intensity += ((weather.raining ? 1 : 0) - weather.intensity) * Math.min(1, dtSec * 0.6);
     if (actx && rainGain) rainGain.gain.setTargetAtTime(weather.intensity * 0.5, actx.currentTime, 0.4);
 
+    // Niebla: revelar el minimapa alrededor del jugador
+    const pcx = Math.floor(player.x / TILE), pcy = Math.floor(player.y / TILE);
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const gx = pcx + dx, gy = pcy + dy; if (gx >= 0 && gy >= 0 && gx < COLS && gy < ROWS && Math.hypot(dx, dy) < 2.6) explored[gy][gx] = true; }
+
     nearLocker = null;
     for (const L of lockers) if (dist(player.x, player.y, L.x, L.y) < 34) { nearLocker = L; break; }
+    nearGen = !generator.on && dist(player.x, player.y, generator.x, generator.y) < 36;
     updatePrompt();
 
     if (!player.hidden) {
@@ -731,11 +746,13 @@
       for (const b of boots) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 11) { b.taken = true; player.hasBoots = true; document.getElementById("stamWrap").style.display = "flex"; beep(300, 0.1, "square", 0.18); setTimeout(() => beep(450, 0.12, "square", 0.18), 80); flashMsg("¡Botas! Mantén Shift para correr"); }
       for (const dp of decoyPickups) if (!dp.taken && dist(player.x, player.y, dp.x, dp.y) < PLAYER_R + 11) { dp.taken = true; player.decoys += 2; beep(640, 0.09, "square", 0.16); flashMsg("Señuelos +2 (Q para lanzar)"); updateHud(); }
       for (const rd of radars) if (!rd.taken && dist(player.x, player.y, rd.x, rd.y) < PLAYER_R + 11) { rd.taken = true; player.radars++; beep(900, 0.08, "sine", 0.16); flashMsg("Radar +1 (R para ver al monstruo)"); updateHud(); }
+      for (const m of mapItems) if (!m.taken && dist(player.x, player.y, m.x, m.y) < PLAYER_R + 11) { m.taken = true; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) explored[y][x] = true; beep(700, 0.09, "sine", 0.16); setTimeout(() => beep(1000, 0.1, "sine", 0.14), 90); flashMsg("Mapa del piso: minimapa revelado"); }
       for (const n of notes) if (!n.taken && dist(player.x, player.y, n.x, n.y) < PLAYER_R + 10) { n.taken = true; notesFound++; document.getElementById("noteCount").textContent = notesFound; beep(330, 0.12, "sine", 0.14); showNote(n.text); }
       for (const tr of traps) if (!tr.triggered && dist(player.x, player.y, tr.x, tr.y) < 16) { tr.triggered = true; player.stunUntil = now + 900; enemy.alertUntil = now + 4500; enemy.lureUntil = 0; enemy.chasing = true; enemy.repathT = 0; player.sanity = Math.max(0, player.sanity - 12); beep(140, 0.25, "sawtooth", 0.3); setTimeout(() => beep(90, 0.3, "sawtooth", 0.25), 120); flashMsg("¡TRAMPA! El ruido lo atrajo"); }
       if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
-        if (collected >= KEY_COUNT) { if (floorIdx < FLOORS.length - 1) { descend(); return; } else { win(); return; } }
-        else flashMsg("Cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s).");
+        if (collected >= KEY_COUNT && generator.on) { if (floorIdx < FLOORS.length - 1) { descend(); return; } else { win(); return; } }
+        else if (collected < KEY_COUNT) flashMsg("Cerrada. Faltan " + (KEY_COUNT - collected) + " llave(s).");
+        else flashMsg("Sin energía: activa el generador ⚡");
       }
     }
 
@@ -791,6 +808,9 @@
         if (TH.decor === "books") {
           for (let bi = 0; bi < 4; bi++) { const bh = 12 + ((hash(x * 4 + bi, y) * 16) | 0); ctx.fillStyle = BOOK_COLORS[(hash(x + bi, y * 3) * BOOK_COLORS.length) | 0]; ctx.fillRect(px + 4 + bi * 10, py + 8 + (TILE - 16 - bh), 8, bh); }
           ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(px, py + TILE * 0.52, TILE, 2);
+        } else if (TH.decor === "tiles") {
+          ctx.fillStyle = "rgba(190,205,195,0.07)"; for (let i = 1; i < 3; i++) { ctx.fillRect(px, py + i * TILE / 3, TILE, 1); ctx.fillRect(px + i * TILE / 3, py, 1, TILE); }
+          if (r > 0.9) { ctx.fillStyle = "rgba(90,20,20,0.22)"; ctx.fillRect(px + 8, py + 9, 15, 5); }
         } else if (r > 0.82) { ctx.fillStyle = "rgba(60,50,45,0.25)"; ctx.fillRect(px + 6, py + 10 + r * 14, 10, 3); }
       } else {
         const b = TH.fBase + (r * 10 | 0);
@@ -807,6 +827,7 @@
     for (const f of enemy.trail) { const age = (now - f.t) / 4000; if (age >= 1) continue; ctx.fillStyle = "rgba(30,10,14," + (0.5 * (1 - age)).toFixed(3) + ")"; ctx.beginPath(); ctx.ellipse(f.x - 3, f.y, 2.6, 4, 0, 0, 7); ctx.ellipse(f.x + 3, f.y, 2.6, 4, 0, 0, 7); ctx.fill(); }
 
     for (const w of wallLights) drawWallLight(w);
+    drawGenerator();
     drawDoor();
     const t = now / 500;
     for (const tr of traps) drawTrap(tr);
@@ -816,6 +837,7 @@
     for (const b of boots) if (!b.taken) drawBoots(b, t);
     for (const dp of decoyPickups) if (!dp.taken) drawDecoyPickup(dp, t);
     for (const rd of radars) if (!rd.taken) drawRadarItem(rd, t);
+    for (const m of mapItems) if (!m.taken) drawMapItem(m, t);
     for (const n of notes) if (!n.taken) drawNote(n, t);
     for (const k of keys) if (!k.taken) drawKey(k, t, false);
     for (const k of masterKeys) if (!k.taken) drawKey(k, t, true);
@@ -909,7 +931,7 @@
     ctx.beginPath(); ctx.arc(x - 4, y - 5, 2.3, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(x + 4, y - 5, 2.3, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
   }
   function drawDoor() {
-    const open = collected >= KEY_COUNT, last = floorIdx >= FLOORS.length - 1; ctx.save();
+    const open = collected >= KEY_COUNT && generator.on, last = floorIdx >= FLOORS.length - 1; ctx.save();
     if (open) { ctx.shadowColor = "rgba(90,220,90,0.7)"; ctx.shadowBlur = 20; }
     ctx.fillStyle = open ? "#2f7d32" : "#4a3118"; ctx.fillRect(door.x - 17, door.y - 22, 34, 44);
     ctx.fillStyle = open ? "#58c75c" : "#6b4420"; ctx.fillRect(door.x - 13, door.y - 18, 26, 36); ctx.restore();
@@ -963,6 +985,19 @@
     for (let a = 0; a < 8; a++) { const ang = a / 8 * Math.PI * 2, ix = tr.x + Math.cos(ang) * 6, iy = tr.y + Math.sin(ang) * 6; ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(tr.x + Math.cos(ang - 0.2) * 10, tr.y + Math.sin(ang - 0.2) * 10); ctx.lineTo(tr.x + Math.cos(ang + 0.2) * 10, tr.y + Math.sin(ang + 0.2) * 10); ctx.closePath(); ctx.fill(); }
     ctx.restore();
   }
+  function drawGenerator() {
+    const g = generator;
+    ctx.fillStyle = "#23262c"; ctx.fillRect(g.x - 15, g.y - 14, 30, 30);
+    ctx.fillStyle = "#33373f"; ctx.fillRect(g.x - 12, g.y - 11, 24, 24);
+    ctx.fillStyle = "#1a1d22"; for (let i = 0; i < 3; i++) ctx.fillRect(g.x - 9, g.y - 6 + i * 6, 18, 2);
+    ctx.strokeStyle = "#8a8a92"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(g.x + 8, g.y + 8); ctx.lineTo(g.x + 8 + (g.on ? 5 : -5), g.y); ctx.stroke();
+    ctx.save(); ctx.shadowColor = g.on ? "rgba(90,230,90,0.9)" : "rgba(230,60,60,0.85)"; ctx.shadowBlur = 13; ctx.fillStyle = g.on ? "#6ad46a" : "#e05555"; ctx.beginPath(); ctx.arc(g.x, g.y - 18, 3, 0, 7); ctx.fill(); ctx.restore();
+  }
+  function drawMapItem(m, t) {
+    const g = 0.5 + Math.sin(t * 1.2 + m.x) * 0.4; ctx.save(); ctx.shadowColor = "rgba(120,170,230," + g + ")"; ctx.shadowBlur = 11;
+    ctx.fillStyle = "#3a5a8a"; ctx.fillRect(m.x - 7, m.y - 6, 14, 12); ctx.restore();
+    ctx.strokeStyle = "#9ec0ee"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(m.x - 2, m.y - 6); ctx.lineTo(m.x - 2, m.y + 6); ctx.moveTo(m.x + 3, m.y - 6); ctx.lineTo(m.x + 3, m.y + 6); ctx.stroke();
+  }
   function drawRadarItem(rd, t) {
     const g = 0.5 + Math.sin(t * 1.6 + rd.x) * 0.4;
     ctx.save(); ctx.shadowColor = "rgba(90,220,210," + g + ")"; ctx.shadowBlur = 12;
@@ -994,11 +1029,12 @@
     ctx.save(); ctx.globalAlpha = 0.9;
     ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(ox - 4, oy - 4, w + 8, h + 8);
     ctx.strokeStyle = "rgba(120,130,150,0.4)"; ctx.strokeRect(ox - 4.5, oy - 4.5, w + 9, h + 9);
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[y][x] === 0) { ctx.fillStyle = "rgba(90,84,76,0.5)"; ctx.fillRect(ox + x * s, oy + y * s, s, s); }
-    const t = performance.now() / 300;
-    for (const k of keys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); ctx.fillStyle = "rgba(255,207,77," + (0.5 + Math.sin(t + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
-    for (const k of masterKeys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); ctx.fillStyle = "rgba(255,170,40," + (0.5 + Math.sin(t * 1.5 + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
-    const open = collected >= KEY_COUNT; ctx.fillStyle = open ? "#5ad45a" : "#b06a2a"; ctx.fillRect(ox + door.gx * s - 1, oy + door.gy * s - 1, s + 2, s + 2);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[y][x] === 0 && explored[y][x]) { ctx.fillStyle = "rgba(90,84,76,0.5)"; ctx.fillRect(ox + x * s, oy + y * s, s, s); }
+    const t = performance.now() / 300, seen = (gx, gy) => explored[gy] && explored[gy][gx];
+    for (const k of keys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); if (!seen(gx, gy)) continue; ctx.fillStyle = "rgba(255,207,77," + (0.5 + Math.sin(t + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
+    for (const k of masterKeys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); if (!seen(gx, gy)) continue; ctx.fillStyle = "rgba(255,170,40," + (0.5 + Math.sin(t * 1.5 + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
+    if (seen(generator.gx, generator.gy)) { ctx.fillStyle = generator.on ? "#5ad45a" : "rgba(90,200,255," + (0.5 + Math.sin(t * 1.4) * 0.5) + ")"; ctx.fillRect(ox + generator.gx * s - 1, oy + generator.gy * s - 1, s + 2, s + 2); }
+    const open = collected >= KEY_COUNT && generator.on; if (seen(door.gx, door.gy)) { ctx.fillStyle = open ? "#5ad45a" : "#b06a2a"; ctx.fillRect(ox + door.gx * s - 1, oy + door.gy * s - 1, s + 2, s + 2); }
     const radarOn = performance.now() < radarUntil;
     if ((enemy.chasing && !player.hidden) || radarOn) { const egx = Math.floor(enemy.x / TILE), egy = Math.floor(enemy.y / TILE); const pulse = 0.4 + Math.sin(t * 2) * 0.4; ctx.fillStyle = radarOn ? "rgba(90,255,220," + (0.55 + Math.sin(t * 4) * 0.45) + ")" : "rgba(255,40,40," + pulse + ")"; ctx.fillRect(ox + egx * s - 2, oy + egy * s - 2, s + 4, s + 4); }
     const pgx = Math.floor(player.x / TILE), pgy = Math.floor(player.y / TILE); ctx.fillStyle = "#eef"; ctx.fillRect(ox + pgx * s, oy + pgy * s, s, s);
@@ -1018,7 +1054,7 @@
   function updateHud() { elKeyCount.textContent = collected; document.getElementById("decoyCount").textContent = player.decoys; document.getElementById("radarCount").textContent = player.radars; document.getElementById("noteCount").textContent = notesFound; }
   function updateBatt() { const b = Math.max(0, player.battery); elBatt.style.width = b + "%"; elBatt.style.background = !player.light ? "#3a4048" : b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)"; }
   function updateSan() { const v = Math.max(0, player.sanity); elSan.style.width = v + "%"; elSan.style.background = v < 30 ? "linear-gradient(90deg,#7a2e8a,#c04bd0)" : "linear-gradient(90deg,#5a4a9a,#9a86d0)"; elStam.style.width = player.stamina + "%"; elStam.style.background = "linear-gradient(90deg,#8a6a2a,#d0b060)"; }
-  function updatePrompt() { if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
+  function updatePrompt() { if (nearGen && !player.hidden) { elPrompt.innerHTML = "<b>E</b> activar generador"; elPrompt.classList.add("show"); } else if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
   function flashMsg(txt) { elMsg.textContent = txt; elMsg.classList.add("show"); clearTimeout(msgTimer); msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1900); }
   function showNote(html) { elNote.innerHTML = "“" + html + "”"; elNote.classList.add("show"); clearTimeout(noteTimer); noteTimer = setTimeout(() => elNote.classList.remove("show"), 6500); }
   function fmt(sec) { const m = Math.floor(sec / 60), s = Math.floor(sec % 60); return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); }
@@ -1029,6 +1065,16 @@
   function addTime(v) { const a = getTimes(); a.push(v); a.sort((x, y) => x - y); try { localStorage.setItem(timesKey(), JSON.stringify(a.slice(0, 5))); } catch (e) {} }
   function bestTime() { const a = getTimes(); return a.length ? a[0] : null; }
   function refreshBest() { const b = bestTime(); document.getElementById("bestStart").textContent = b != null ? "Mejor tiempo (" + diff.label + "): " + fmt(b) : "Sin récord en " + diff.label + " todavía"; }
+
+  // Partida guardada (recuerda en qué piso ibas)
+  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed })); } catch (e) {} }
+  function clearSave() { try { localStorage.removeItem("lospasillos_save"); } catch (e) {} }
+  function getSave() { try { return JSON.parse(localStorage.getItem("lospasillos_save")); } catch (e) { return null; } }
+  function refreshContinue() {
+    const s = getSave(), btn = document.getElementById("continueBtn");
+    if (s && FLOORS[s.floorIdx]) { btn.style.display = ""; btn.textContent = "Continuar — Piso " + (s.floorIdx + 1) + " (" + (DIFF[s.diffName] ? DIFF[s.diffName].label : "") + ")"; }
+    else btn.style.display = "none";
+  }
 
   const ACHIEVEMENTS = [
     { id: "escape", name: "Superviviente", desc: "Escapa del complejo" },
@@ -1095,7 +1141,7 @@
   document.getElementById("pauseOptBtn").addEventListener("click", () => openOptions("pause"));
   document.getElementById("quitBtn").addEventListener("click", () => {
     running = false; paused = false; hideAllScreens(); startScreen.classList.remove("hidden");
-    document.getElementById("hud").style.display = "none"; document.getElementById("touch").style.display = "none"; refreshBest();
+    document.getElementById("hud").style.display = "none"; document.getElementById("touch").style.display = "none"; refreshBest(); refreshContinue();
   });
 
   function startBtnAction() {
@@ -1109,11 +1155,31 @@
     elNote.classList.remove("show");
     document.getElementById("hud").style.display = "flex";
     if ("ontouchstart" in window) document.getElementById("touch").style.display = "block";
-    newRun(); running = true; paused = false; last = performance.now();
+    newRun(); saveRun(); running = true; paused = false; last = performance.now();
     weather.raining = false; weather.intensity = 0;
     if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop(); if (!evTimer) eventLoop();
     if (!weatherTimer) weatherLoop(); if (!thunderTimer) thunderLoop();
   }
+  function loadRun() {
+    const s = getSave(); if (!s || !FLOORS[s.floorIdx]) { refreshContinue(); return; }
+    initAudio(); if (actx && actx.state === "suspended") actx.resume();
+    hideAllScreens(); elNote.classList.remove("show");
+    document.getElementById("hud").style.display = "flex";
+    if ("ontouchstart" in window) document.getElementById("touch").style.display = "block";
+    diffName = s.diffName; diff = DIFF[diffName] || DIFF.normal;
+    document.querySelectorAll(".diffBtn").forEach(x => x.classList.toggle("selected", x.dataset.diff === diffName));
+    floorIdx = s.floorIdx; notesFound = 0; notesPlaced = 0; newRecord = false; newAch = []; runSprinted = false; runChased = false;
+    player.hasBoots = !!s.hasBoots; player.decoys = s.decoys || 0; player.radars = s.radars || 0;
+    buildFloor(false);
+    player.battery = s.battery != null ? s.battery : 100; player.sanity = s.sanity != null ? s.sanity : 100; updateBatt(); updateSan(); updateHud();
+    startTime = performance.now() - (s.elapsed || 0) * 1000; elapsed = s.elapsed || 0;
+    running = true; paused = false; last = performance.now();
+    weather.raining = false; weather.intensity = 0;
+    if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop(); if (!evTimer) eventLoop();
+    if (!weatherTimer) weatherLoop(); if (!thunderTimer) thunderLoop();
+    flashMsg("Continúas en el Piso " + (floorIdx + 1) + ": " + FLOORS[floorIdx].name);
+  }
+  document.getElementById("continueBtn").addEventListener("click", loadRun);
   function descend() {
     running = false; floorIdx++;
     if (actx && rainGain) rainGain.gain.setTargetAtTime((weather.intensity * 0.5) * 0.12, actx.currentTime, 0.35); // baja la lluvia durante la transición
@@ -1129,20 +1195,20 @@
       }
     }];
     playCinematic(() => {
-      buildFloor(false); running = true; paused = false; last = performance.now();
+      buildFloor(false); saveRun(); running = true; paused = false; last = performance.now();
       document.getElementById("hud").style.display = "flex";
       if ("ontouchstart" in window) document.getElementById("touch").style.display = "block";
       flashMsg("Piso " + (floorIdx + 1) + ": " + fl.name);
     }, scenes);
   }
   function lose() {
-    running = false; fearPulse = 1;
+    running = false; fearPulse = 1; clearSave();
     beep(70, 0.6, "sawtooth", 0.35); setTimeout(() => beep(42, 0.9, "sawtooth", 0.3), 80); noise(0.6, 0.3, "highpass", 1200);
     document.getElementById("overText").textContent = "Caíste en el piso " + (floorIdx + 1) + " (" + FLOORS[floorIdx].name + "). Reuniste " + collected + " de " + KEY_COUNT + " llaves.";
     playCinematic(() => { hideAllScreens(); overScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, CINE_LOSE);
   }
   function win() {
-    running = false;
+    running = false; clearSave();
     const allNotes = notesPlaced > 0 && notesFound >= notesPlaced;
     addTime(elapsed); const prev = getTimes()[1] != null ? getTimes()[1] : null;
     newRecord = bestTime() != null && Math.abs(bestTime() - elapsed) < 0.001 && getTimes().length >= 1 && elapsed <= getTimes()[0];
@@ -1328,7 +1394,7 @@
     requestAnimationFrame(frame);
   }
   document.getElementById("hud").style.display = "none";
-  refreshBest(); buildFloor(true); requestAnimationFrame(frame);
+  refreshBest(); refreshContinue(); buildFloor(true); requestAnimationFrame(frame);
 })();
 </script>
 </body>
