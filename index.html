@@ -68,6 +68,8 @@
   #actionBtn { bottom: 44px; right: 32px; width: 88px; height: 88px; background: rgba(90,110,130,.18); border: 1px solid rgba(160,190,220,.4); color: #cfe; font-size: 13px; }
   #decoyBtn { bottom: 148px; right: 40px; width: 64px; height: 64px; background: rgba(120,90,160,.18); border: 1px solid rgba(180,150,220,.45); color: #dce; font-size: 11px; }
   #lightBtn { bottom: 226px; right: 46px; width: 58px; height: 58px; background: rgba(200,180,90,.16); border: 1px solid rgba(230,210,120,.45); color: #ffe9a8; font-size: 11px; }
+  #cineSkip { position: fixed; bottom: 24px; right: 28px; z-index: 11; display: none; background: rgba(0,0,0,.5); border: 1px solid #555; color: #bbb; font-family: inherit; font-size: 13px; letter-spacing: 2px; padding: 8px 16px; cursor: pointer; }
+  #cineSkip:hover { color: #fff; border-color: #999; }
 </style>
 </head>
 <body>
@@ -87,6 +89,7 @@
 
   <div id="prompt"><b>E</b> esconderte</div>
   <div id="note"></div>
+  <button id="cineSkip">SALTAR ▶</button>
 
   <div id="touch">
     <div id="stick"><div id="nub"></div></div>
@@ -220,6 +223,7 @@
   let scareUntil = 0, scareSide = 1;          // susto visual
   let jumpscareUntil = 0;                      // susto de muerte
   let newRecord = false;
+  let cine = null;                             // cinemática de intro
 
   function cellCenter(cx, cy) { return { x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2 }; }
   function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
@@ -271,6 +275,7 @@
   const pressed = {};
   const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
   addEventListener("keydown", e => {
+    if (cine) { if (e.code === "Escape" || e.code === "Enter" || e.code === "Space") { endCinematic(); e.preventDefault(); } return; }
     if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = true; e.preventDefault(); }
     if (e.code === "ShiftLeft" || e.code === "ShiftRight") pressed.sprint = true;
     if (!running) return;
@@ -320,6 +325,7 @@
     gp.x = Math.abs(ax) > 0.25 ? ax : 0; gp.y = Math.abs(ay) > 0.25 ? ay : 0;
     gp.sprint = !!((p.buttons[6] && p.buttons[6].pressed) || (p.buttons[7] && p.buttons[7].pressed) || (p.buttons[10] && p.buttons[10].pressed));
     const hit = i => p.buttons[i] && p.buttons[i].pressed && !gpPrev[i];
+    if (cine) { if (hit(0) || hit(9)) endCinematic(); gpPrev = p.buttons.map(b => b.pressed); return; }
     if (!running) { if (hit(0) || hit(9)) startGame(); }
     else { if (hit(0)) interact(); if (hit(1)) toggleLight(); if (hit(2)) throwDecoy(); if (hit(3)) toggleLight(); }
     gpPrev = p.buttons.map(b => b.pressed);
@@ -751,6 +757,7 @@
     initAudio(); if (actx && actx.state === "suspended") actx.resume();
     startScreen.classList.add("hidden"); storyScreen.classList.add("hidden"); overScreen.classList.add("hidden"); winScreen.classList.add("hidden");
     elNote.classList.remove("show"); document.getElementById("noteCount").textContent = "0"; document.getElementById("stamWrap").style.display = "none";
+    document.getElementById("hud").style.display = "flex";
     setup(); updateBatt(); updateSan(); running = true; last = performance.now();
     if (!heartTimer) heartbeat(); if (!ambTimer) ambientLoop(); if (!growlTimer) growlLoop();
   }
@@ -767,15 +774,123 @@
     document.getElementById("winText").innerHTML = "Escapaste en <span class='hi'>" + fmt(elapsed) + "</span> (" + diff.label + ")." + (notesFound ? " Reuniste " + notesFound + " nota(s)." : "") + (newRecord ? "<br><b style='color:#7fa'>¡NUEVO RÉCORD!</b>" : (prev != null ? "<br>Mejor: " + fmt(prev) : ""));
     winScreen.classList.remove("hidden");
   }
-  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("startBtn").addEventListener("click", () => {
+    initAudio(); if (actx && actx.state === "suspended") actx.resume();
+    startScreen.classList.add("hidden");
+    playCinematic(startGame);
+  });
   document.getElementById("retryBtn").addEventListener("click", startGame);
   document.getElementById("againBtn").addEventListener("click", startGame);
+
+  // ---------------------------------------------------------------- Cinemática
+  function drawMiniKey(x, y) { ctx.save(); ctx.shadowColor = "rgba(255,207,77,0.8)"; ctx.shadowBlur = 12; ctx.fillStyle = "#ffcf4d"; ctx.beginPath(); ctx.arc(x - 4, y, 4, 0, 7); ctx.fill(); ctx.fillRect(x - 1, y - 1.5, 10, 3); ctx.fillRect(x + 6, y - 1.5, 2, 4); ctx.restore(); }
+  const CINE_SCENES = [
+    { dur: 4200, text: "El complejo subterráneo llevaba años sellado.",
+      onEnter() { noise(0.6, 0.1, "lowpass", 120); beep(80, 0.4, "sine", 0.1); },
+      draw(p, now) {
+        const lx = VIEW_W / 2 + Math.sin(now / 700) * 60, ly = VIEW_H * 0.26;
+        const flick = Math.random() < 0.08 ? 0.25 : 1;
+        const g = ctx.createRadialGradient(lx, ly, 0, lx, ly, 280);
+        g.addColorStop(0, "rgba(255,230,170," + (0.42 * flick) + ")"); g.addColorStop(0.5, "rgba(120,90,50," + (0.14 * flick) + ")"); g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.strokeStyle = "rgba(40,40,40,0.85)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(VIEW_W / 2, -10); ctx.lineTo(lx, ly); ctx.stroke();
+        ctx.fillStyle = "rgba(18,18,18,0.95)"; ctx.beginPath(); ctx.ellipse(lx, ly - 6, 15, 8, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(lx, ly + 2, 4 * flick + 1, 0, 7); ctx.fill();
+      } },
+    { dur: 4600, text: "Nadie recordaba qué se investigaba en sus pasillos sin ventanas.",
+      onEnter() { noise(0.7, 0.07, "bandpass", 500); },
+      draw(p, now) {
+        const vx = VIEW_W / 2, vy = VIEW_H * 0.46;
+        ctx.strokeStyle = "rgba(70,64,56,0.55)"; ctx.lineWidth = 1.5;
+        for (const c of [[0, 0], [VIEW_W, 0], [0, VIEW_H], [VIEW_W, VIEW_H]]) { ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.lineTo(vx, vy); ctx.stroke(); }
+        for (let i = 1; i <= 7; i++) { const f = Math.pow(i / 8, 1.5); const x0 = vx * (1 - f), x1 = vx + (VIEW_W - vx) * f, y0 = vy * (1 - f), y1 = vy + (VIEW_H - vy) * f; ctx.globalAlpha = 0.35 * (1 - f) + 0.08; ctx.strokeRect(x0, y0, VIEW_W - x0 - x0, VIEW_H - y0 - y0); }
+        ctx.globalAlpha = 1;
+        const g = ctx.createRadialGradient(vx, vy, 0, vx, vy, 130); g.addColorStop(0, "rgba(120,110,90,0.22)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      } },
+    { dur: 4600, text: "Hasta que algo, en la oscuridad, aprendió a seguir la luz.",
+      onEnter() { growl(0.32, 0); },
+      draw(p, now) {
+        const ex = VIEW_W / 2, ey = VIEW_H * 0.42, sp = 30;
+        const openP = Math.min(1, Math.max(0, p - 0.12) * 2.2);
+        let blink = 1; const bt = (now / 1700) % 1; if (bt > 0.93) blink = 1 - (bt - 0.93) / 0.07;
+        const h = 11 * openP * Math.max(0.05, blink);
+        ctx.save(); ctx.shadowColor = "#f00"; ctx.shadowBlur = 36; ctx.fillStyle = "#ff2222";
+        ctx.beginPath(); ctx.ellipse(ex - sp, ey, 11, h, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(ex + sp, ey, 11, h, 0, 0, 7); ctx.fill(); ctx.restore();
+        if (h > 4) { ctx.fillStyle = "#200"; ctx.beginPath(); ctx.arc(ex - sp, ey, 3.2, 0, 7); ctx.arc(ex + sp, ey, 3.2, 0, 7); ctx.fill(); }
+      } },
+    { dur: 4800, text: "Sellaron la salida con cinco cerraduras y lanzaron las llaves a los corredores.",
+      onEnter() { beep(260, 0.12, "square", 0.14); setTimeout(() => beep(200, 0.14, "square", 0.12), 170); },
+      draw(p, now) {
+        const dx = VIEW_W / 2, dy = VIEW_H * 0.45;
+        ctx.fillStyle = "#2a1c10"; ctx.fillRect(dx - 52, dy - 82, 104, 164);
+        ctx.fillStyle = "#3e2a16"; ctx.fillRect(dx - 44, dy - 74, 88, 148);
+        ctx.strokeStyle = "#181009"; ctx.lineWidth = 2; ctx.strokeRect(dx - 44, dy - 74, 88, 148);
+        for (let i = 0; i < 5; i++) { const ly = dy - 54 + i * 26; ctx.fillStyle = "#caa15a"; ctx.fillRect(dx - 7, ly, 14, 18); ctx.fillStyle = "#7a5a20"; ctx.fillRect(dx - 3, ly + 5, 6, 8); }
+        const kp = Math.max(0, p - 0.45) / 0.55;
+        for (let i = 0; i < 5; i++) { const ang = (i / 5) * Math.PI * 2 - Math.PI / 2; const r = kp * Math.max(VIEW_W, VIEW_H) * 0.55; ctx.save(); ctx.globalAlpha = 1 - kp * 0.4; drawMiniKey(dx + Math.cos(ang) * r, dy + Math.sin(ang) * r); ctx.restore(); }
+      } },
+    { dur: 4200, text: "Ahora despiertas dentro. Una linterna moribunda es todo lo que tienes.",
+      onEnter() { beep(900, 0.03, "square", 0.12); setTimeout(() => noise(0.12, 0.1, "highpass", 3000), 40); },
+      draw(p, now) {
+        const cx = VIEW_W * 0.5, cy = VIEW_H * 0.62, on = p > 0.2 && !(p < 0.3 && Math.random() < 0.4);
+        if (on) {
+          const ang = -0.5 + Math.sin(now / 500) * 0.45, r = Math.min(VIEW_W, VIEW_H) * 0.75;
+          ctx.save(); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, ang - 0.32, ang + 0.32); ctx.closePath();
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, "rgba(255,240,200,0.5)"); g.addColorStop(0.6, "rgba(200,180,130,0.14)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fill(); ctx.restore();
+          ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(cx + Math.cos(ang) * 12, cy + Math.sin(ang) * 12, 2, 0, 7); ctx.fill();
+        }
+        ctx.fillStyle = "#333"; ctx.fillRect(cx - 10, cy - 6, 20, 12);
+      } },
+    { dur: 4400, text: "Reúne las cinco llaves. Apaga la luz cuando lo sientas cerca. Escapa.",
+      onEnter() { beep(300, 0.1, "triangle", 0.12); setTimeout(() => beep(450, 0.1, "triangle", 0.12), 140); setTimeout(() => beep(600, 0.25, "triangle", 0.12), 300); },
+      draw(p, now) {
+        const a = Math.min(1, p * 1.8), flick = Math.random() < 0.1 ? 0.5 : 1;
+        ctx.save(); ctx.textAlign = "center"; ctx.fillStyle = "rgba(180,17,17," + (a * flick) + ")"; ctx.shadowColor = "rgba(180,0,0,0.8)"; ctx.shadowBlur = 24;
+        ctx.font = "bold 54px Courier New"; ctx.fillText("LOS PASILLOS", VIEW_W / 2, VIEW_H * 0.42); ctx.restore();
+      } },
+  ];
+  function wrapText(text, maxW, font) {
+    ctx.font = font; const words = text.split(" "), lines = []; let cur = "";
+    for (const w of words) { const test = cur ? cur + " " + w : w; if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
+    if (cur) lines.push(cur); return lines;
+  }
+  function drawCineText(text, p) {
+    const reveal = Math.max(0, Math.min(1, (p - 0.12) / 0.5)), shown = text.slice(0, Math.ceil(text.length * reveal));
+    const font = "italic 19px Courier New", lines = wrapText(shown, Math.min(VIEW_W - 80, 620), font);
+    ctx.save(); ctx.font = font; ctx.textAlign = "center"; ctx.fillStyle = "#d8c7a0"; ctx.shadowColor = "#000"; ctx.shadowBlur = 8;
+    let y = VIEW_H * 0.74; for (const ln of lines) { ctx.fillText(ln, VIEW_W / 2, y); y += 28; } ctx.restore();
+  }
+  function playCinematic(onDone) {
+    cine = { t0: performance.now(), lastIdx: -1, scenes: CINE_SCENES, onDone };
+    document.getElementById("cineSkip").style.display = "block";
+    document.getElementById("hud").style.display = "none";
+  }
+  function endCinematic() {
+    if (!cine) return; const cb = cine.onDone; cine = null;
+    document.getElementById("cineSkip").style.display = "none";
+    cb && cb();
+  }
+  function drawCinematic(now) {
+    const el = now - cine.t0; let idx = 0, acc = 0;
+    while (idx < cine.scenes.length && el > acc + cine.scenes[idx].dur) { acc += cine.scenes[idx].dur; idx++; }
+    if (idx >= cine.scenes.length) { endCinematic(); return; }
+    const sc = cine.scenes[idx], p = (el - acc) / sc.dur;
+    if (idx !== cine.lastIdx) { cine.lastIdx = idx; try { sc.onEnter && sc.onEnter(); } catch (e) {} }
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.save(); try { sc.draw(p, now); } catch (e) {} ctx.restore();
+    drawCineText(sc.text, p);
+    let fade = 0; if (p < 0.1) fade = 1 - p / 0.1; else if (p > 0.9) fade = (p - 0.9) / 0.1;
+    if (fade > 0) { ctx.fillStyle = "rgba(0,0,0," + fade.toFixed(3) + ")"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+  }
+  document.getElementById("cineSkip").addEventListener("click", endCinematic);
+  document.getElementById("cineSkip").addEventListener("touchstart", e => { e.preventDefault(); endCinematic(); });
 
   // ---------------------------------------------------------------- Loop
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(3, (now - last) / 16.666); last = now;
     pollGamepad();
+    if (cine) { drawCinematic(now); requestAnimationFrame(frame); return; }
     if (running) update(dt);
     draw();
     requestAnimationFrame(frame);
