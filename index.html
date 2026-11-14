@@ -351,6 +351,7 @@
   function buildFloor(fresh) {
     diff = DIFF[diffName];
     generateMaze();
+    buildTileAtlas(FLOORS[floorIdx].theme);   // texturas del escenario de este piso
     const p = cellCenter(1, 1);
     player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0; player.face = Math.PI / 4;
     player.hidden = false; player.stunUntil = 0; player.light = true; player.stepAt = 0; player.stamina = 100;
@@ -787,6 +788,115 @@
     elapsed = (now - startTime) / 1000;
   }
 
+  // ------------------------------------------------- Texturas (atlas por escenario)
+  const AV = 8; // variantes de baldosa
+  let tileAtlas = null, atlasTheme = null, shadowTop = null, shadowLeft = null, shadowRight = null;
+  function srnd(st) { st.s = (st.s * 1664525 + 1013904223) >>> 0; return st.s / 4294967296; }
+  function rgb(r, g, b) { return "rgb(" + Math.max(0, Math.min(255, r | 0)) + "," + Math.max(0, Math.min(255, g | 0)) + "," + Math.max(0, Math.min(255, b | 0)) + ")"; }
+  function buildShadows() {
+    const mkShadow = (w, h, x0, y0, x1, y1) => {
+      const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d");
+      const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, "rgba(0,0,0,0.5)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gr; g.fillRect(0, 0, w, h); return c;
+    };
+    shadowTop = mkShadow(TILE, 15, 0, 0, 0, 15);
+    shadowLeft = mkShadow(13, TILE, 0, 0, 13, 0);
+    shadowRight = mkShadow(13, TILE, 13, 0, 0, 0);
+  }
+  function drawFloorTile(g, ox, oy, TH, name, st) {
+    const b = TH.fBase, t = TH.fTint;
+    if (name === "library") {                       // tablones de madera
+      const ph = TILE / 3;
+      for (let p = 0; p < 3; p++) {
+        const v = srnd(st) * 10;
+        g.fillStyle = rgb(b + t[0] + v, b + t[1] + v * 0.6, b + t[2] + v * 0.3);
+        g.fillRect(ox, oy + p * ph, TILE, ph);
+        g.strokeStyle = "rgba(0,0,0,0.16)"; g.lineWidth = 1;
+        for (let k = 0; k < 2; k++) { const yy = oy + p * ph + 3 + srnd(st) * (ph - 6); g.beginPath(); g.moveTo(ox + 2, yy); g.bezierCurveTo(ox + TILE * 0.3, yy + 1.5, ox + TILE * 0.6, yy - 1.5, ox + TILE - 2, yy); g.stroke(); }
+        g.fillStyle = "rgba(0,0,0,0.42)"; g.fillRect(ox, oy + p * ph + ph - 1.5, TILE, 1.5);
+        if (srnd(st) > 0.55) { g.fillStyle = "rgba(0,0,0,0.3)"; g.fillRect(ox + 4, oy + p * ph + ph * 0.5, 1.5, 1.5); g.fillRect(ox + TILE - 6, oy + p * ph + ph * 0.5, 1.5, 1.5); }
+      }
+    } else if (name === "enfermeria") {             // baldosas cerámicas
+      const sub = TILE / 3;
+      for (let a = 0; a < 3; a++) for (let c = 0; c < 3; c++) {
+        const v = srnd(st) * 9;
+        g.fillStyle = rgb(b + t[0] + v, b + t[1] + v, b + t[2] + v);
+        g.fillRect(ox + a * sub, oy + c * sub, sub - 1, sub - 1);
+      }
+      g.fillStyle = "rgba(10,16,13,0.5)";
+      for (let k = 1; k < 3; k++) { g.fillRect(ox + k * sub - 1, oy, 1, TILE); g.fillRect(ox, oy + k * sub - 1, TILE, 1); }
+      if (srnd(st) > 0.7) { g.strokeStyle = "rgba(0,0,0,0.32)"; g.lineWidth = 1; g.beginPath(); g.moveTo(ox + 6, oy + 8); g.lineTo(ox + 16, oy + 19); g.lineTo(ox + 12, oy + 31); g.stroke(); }
+      if (srnd(st) > 0.82) { g.fillStyle = "rgba(85,18,18,0.18)"; g.beginPath(); g.ellipse(ox + TILE * 0.6, oy + TILE * 0.65, 9, 6, 0, 0, 7); g.fill(); }
+    } else {                                        // hormigón
+      const v = srnd(st) * 8;
+      g.fillStyle = rgb(b + t[0] + v, b + t[1] + v, b + t[2] + v); g.fillRect(ox, oy, TILE, TILE);
+      for (let k = 0; k < 44; k++) { g.fillStyle = "rgba(0,0,0," + (srnd(st) * 0.13).toFixed(3) + ")"; g.fillRect(ox + srnd(st) * TILE, oy + srnd(st) * TILE, 1, 1); }
+      for (let k = 0; k < 16; k++) { g.fillStyle = "rgba(255,255,255," + (srnd(st) * 0.06).toFixed(3) + ")"; g.fillRect(ox + srnd(st) * TILE, oy + srnd(st) * TILE, 1, 1); }
+      g.strokeStyle = "rgba(0,0,0,0.33)"; g.lineWidth = 1; g.strokeRect(ox + 0.5, oy + 0.5, TILE - 1, TILE - 1);
+      if (srnd(st) > 0.62) { g.strokeStyle = "rgba(0,0,0,0.26)"; g.beginPath(); let cx = ox + srnd(st) * TILE, cy = oy; g.moveTo(cx, cy); for (let s2 = 0; s2 < 4; s2++) { cx += (srnd(st) - 0.5) * 13; cy += TILE / 4; g.lineTo(cx, cy); } g.stroke(); }
+      if (srnd(st) > 0.75) { g.fillStyle = "rgba(0,0,0,0.12)"; g.beginPath(); g.ellipse(ox + TILE * 0.5, oy + TILE * 0.5, 12, 8, srnd(st) * 3, 0, 7); g.fill(); }
+    }
+  }
+  function drawWallTopTile(g, ox, oy, TH, name, st) {
+    g.fillStyle = TH.wall; g.fillRect(ox, oy, TILE, TILE);
+    for (let k = 0; k < 24; k++) { g.fillStyle = "rgba(255,255,255," + (srnd(st) * 0.035).toFixed(3) + ")"; g.fillRect(ox + srnd(st) * TILE, oy + srnd(st) * TILE, 1, 1); }
+    g.fillStyle = TH.wallTop; g.fillRect(ox, oy, TILE, 6);
+    g.fillStyle = "rgba(255,255,255,0.06)"; g.fillRect(ox, oy, TILE, 2);
+    g.fillStyle = TH.wallBot; g.fillRect(ox, oy + TILE - 4, TILE, 4);
+  }
+  function drawWallFaceTile(g, ox, oy, TH, name, st) {
+    const fy = oy + TILE * 0.36, fh = TILE * 0.64;
+    if (name === "library") {                       // estantería con libros
+      g.fillStyle = "#3a2615"; g.fillRect(ox, fy, TILE, fh);
+      g.fillStyle = "#17100a"; g.fillRect(ox, fy, TILE, 3);
+      const rows = 2, rh = (fh - 6) / rows;
+      for (let r = 0; r < rows; r++) {
+        let bx = ox + 2;
+        while (bx < ox + TILE - 4) {
+          const bw = 4 + srnd(st) * 5, bh = rh * (0.55 + srnd(st) * 0.4);
+          g.fillStyle = BOOK_COLORS[(srnd(st) * BOOK_COLORS.length) | 0];
+          g.fillRect(bx, fy + 4 + r * rh + (rh - bh), bw, bh);
+          g.fillStyle = "rgba(255,255,255,0.09)"; g.fillRect(bx, fy + 4 + r * rh + (rh - bh), 1, bh);
+          bx += bw + 1;
+        }
+        g.fillStyle = "#281a0d"; g.fillRect(ox, fy + 4 + r * rh + rh - 2, TILE, 2.5);
+      }
+      g.fillStyle = "rgba(0,0,0,0.5)"; g.fillRect(ox, oy + TILE - 3, TILE, 3);
+    } else if (name === "enfermeria") {             // azulejos con zócalo
+      const sub = TILE / 4, rh = fh / 3;
+      for (let a = 0; a < 4; a++) for (let r = 0; r < 3; r++) {
+        const v = srnd(st) * 12;
+        g.fillStyle = rgb(138 + v, 152 + v, 142 + v);
+        g.fillRect(ox + a * sub, fy + r * rh, sub - 1.2, rh - 1.2);
+      }
+      g.fillStyle = "#3d5649"; g.fillRect(ox, oy + TILE - 9, TILE, 9);
+      g.fillStyle = "rgba(0,0,0,0.35)"; g.fillRect(ox, oy + TILE - 10, TILE, 1.5);
+      if (srnd(st) > 0.7) { g.strokeStyle = "rgba(0,0,0,0.3)"; g.lineWidth = 1; g.beginPath(); g.moveTo(ox + 8, fy + 4); g.lineTo(ox + 15, fy + 15); g.stroke(); }
+      if (srnd(st) > 0.8) { g.fillStyle = "rgba(90,20,20,0.25)"; g.beginPath(); g.ellipse(ox + TILE * 0.6, fy + fh * 0.5, 8, 5, 0, 0, 7); g.fill(); }
+    } else {                                        // panel de hormigón con remaches
+      g.fillStyle = "#2b2f38"; g.fillRect(ox, fy, TILE, fh);
+      for (let k = 0; k < 28; k++) { g.fillStyle = "rgba(255,255,255," + (srnd(st) * 0.05).toFixed(3) + ")"; g.fillRect(ox + srnd(st) * TILE, fy + srnd(st) * fh, 1, 1); }
+      g.fillStyle = "rgba(255,255,255,0.08)"; g.fillRect(ox, fy, TILE, 2);
+      g.fillStyle = "rgba(0,0,0,0.4)"; g.fillRect(ox, fy + fh * 0.5, TILE, 1.5);
+      g.fillStyle = "rgba(255,255,255,0.13)"; g.fillRect(ox + 5, fy + 5, 2, 2); g.fillRect(ox + TILE - 7, fy + 5, 2, 2);
+      if (srnd(st) > 0.6) { g.fillStyle = "rgba(95,52,24,0.22)"; g.fillRect(ox + TILE * 0.3, fy + 3, 4, fh * 0.7); }
+      g.fillStyle = "#14171c"; g.fillRect(ox, oy + TILE - 6, TILE, 6);
+    }
+  }
+  function buildTileAtlas(name) {
+    if (!shadowTop) buildShadows();
+    const TH = THEMES[name], c = document.createElement("canvas");
+    c.width = TILE * AV; c.height = TILE * 3;
+    const g = c.getContext("2d");
+    for (let i = 0; i < AV; i++) {
+      const st = { s: ((i + 1) * 2654435761) >>> 0 };
+      drawFloorTile(g, i * TILE, 0, TH, name, st);
+      drawWallTopTile(g, i * TILE, TILE, TH, name, st);
+      drawWallFaceTile(g, i * TILE, TILE * 2, TH, name, st);
+    }
+    tileAtlas = c; atlasTheme = name;
+  }
+
   // ---------------------------------------------------------------- Render
   function draw() {
     const now = performance.now();
@@ -796,28 +906,19 @@
     const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
     ctx.save(); ctx.translate(-camX + shx, -camY + shy);
 
-    const TH = THEMES[FLOORS[floorIdx].theme];
+    if (!tileAtlas || atlasTheme !== FLOORS[floorIdx].theme) buildTileAtlas(FLOORS[floorIdx].theme);
     const x0 = Math.max(0, Math.floor(camX / TILE) - 1), y0 = Math.max(0, Math.floor(camY / TILE) - 1);
     const x1 = Math.min(COLS, Math.ceil((camX + VIEW_W) / TILE) + 1), y1 = Math.min(ROWS, Math.ceil((camY + VIEW_H) / TILE) + 1);
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      const px = x * TILE, py = y * TILE, r = hash(x, y);
+      const px = x * TILE, py = y * TILE, v = ((hash(x, y) * AV) | 0) % AV;
       if (grid[y][x] === 1) {
-        ctx.fillStyle = TH.wall; ctx.fillRect(px, py, TILE, TILE);
-        ctx.fillStyle = TH.wallTop; ctx.fillRect(px, py, TILE, 5);
-        ctx.fillStyle = TH.wallBot; ctx.fillRect(px, py + TILE - 4, TILE, 4);
-        if (TH.decor === "books") {
-          for (let bi = 0; bi < 4; bi++) { const bh = 12 + ((hash(x * 4 + bi, y) * 16) | 0); ctx.fillStyle = BOOK_COLORS[(hash(x + bi, y * 3) * BOOK_COLORS.length) | 0]; ctx.fillRect(px + 4 + bi * 10, py + 8 + (TILE - 16 - bh), 8, bh); }
-          ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(px, py + TILE * 0.52, TILE, 2);
-        } else if (TH.decor === "tiles") {
-          ctx.fillStyle = "rgba(190,205,195,0.07)"; for (let i = 1; i < 3; i++) { ctx.fillRect(px, py + i * TILE / 3, TILE, 1); ctx.fillRect(px + i * TILE / 3, py, 1, TILE); }
-          if (r > 0.9) { ctx.fillStyle = "rgba(90,20,20,0.22)"; ctx.fillRect(px + 8, py + 9, 15, 5); }
-        } else if (r > 0.82) { ctx.fillStyle = "rgba(60,50,45,0.25)"; ctx.fillRect(px + 6, py + 10 + r * 14, 10, 3); }
+        ctx.drawImage(tileAtlas, v * TILE, TILE, TILE, TILE, px, py, TILE, TILE);           // cara superior del muro
+        if (grid[y + 1] && grid[y + 1][x] === 0) ctx.drawImage(tileAtlas, v * TILE, TILE * 2, TILE, TILE, px, py, TILE, TILE); // frente del muro
       } else {
-        const b = TH.fBase + (r * 10 | 0);
-        ctx.fillStyle = "rgb(" + (b + TH.fTint[0]) + "," + (b + TH.fTint[1]) + "," + (b + TH.fTint[2]) + ")"; ctx.fillRect(px, py, TILE, TILE);
-        ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
-        if (r > 0.6) { ctx.fillStyle = "rgba(0,0,0," + (0.06 + r * 0.1).toFixed(2) + ")"; ctx.fillRect(px + 4 + r * 20, py + 6 + r * 24, 3 + r * 4, 2 + r * 3); }
-        if (r > 0.9) { ctx.fillStyle = "rgba(90,20,20,0.18)"; ctx.fillRect(px + 10, py + 8, 16, 5); }
+        ctx.drawImage(tileAtlas, v * TILE, 0, TILE, TILE, px, py, TILE, TILE);              // suelo
+        if (grid[y - 1] && grid[y - 1][x] === 1) ctx.drawImage(shadowTop, px, py);          // sombra del muro de arriba
+        if (grid[y][x - 1] === 1) ctx.drawImage(shadowLeft, px, py);
+        if (grid[y][x + 1] === 1) ctx.drawImage(shadowRight, px + TILE - shadowRight.width, py);
       }
     }
 
