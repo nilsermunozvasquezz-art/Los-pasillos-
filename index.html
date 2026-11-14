@@ -520,7 +520,9 @@
       const tone = actx.createBiquadFilter(); tone.type = "highshelf"; tone.frequency.value = 2600; tone.gain.value = -8;
       masterGain = actx.createGain(); masterGain.gain.value = 0.92;
       masterGain.connect(tone); tone.connect(comp); comp.connect(actx.destination);
-      musicGain = actx.createGain(); musicGain.gain.value = settings.music; musicGain.connect(masterGain);
+      musicGain = actx.createGain(); musicGain.gain.value = settings.music;
+      const mLp = actx.createBiquadFilter(); mLp.type = "lowpass"; mLp.frequency.value = 1500; mLp.Q.value = 0.7;
+      musicGain.connect(mLp); mLp.connect(masterGain);   // la música va filtrada: nada de agudos chillones
       sfxGain = actx.createGain(); sfxGain.gain.value = settings.sfx; sfxGain.connect(masterGain);
       const o1 = actx.createOscillator(), o2 = actx.createOscillator();
       o1.type = "sine"; o1.frequency.value = 55; o2.type = "sine"; o2.frequency.value = 58.7;
@@ -531,7 +533,7 @@
       const rbuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate), rd = rbuf.getChannelData(0);
       for (let i = 0; i < rd.length; i++) rd[i] = (Math.random() * 2 - 1) * 0.5;
       rainSource = actx.createBufferSource(); rainSource.buffer = rbuf; rainSource.loop = true;
-      const rf = actx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 1100;
+      const rf = actx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 2400;
       rainSource.connect(rf); rf.connect(rainGain); rainGain.connect(sfxGain); rainSource.start();
       if (!musicTimer) musicLoop();
     } catch (e) { actx = null; }
@@ -567,7 +569,7 @@
   let musicIdx = 0;
   function playPad(freqs, dur, vol) {
     if (!actx) return; const t = actx.currentTime;
-    for (const f of freqs) for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.45]]) {
+    for (const f of freqs) for (const layer of [["sine", 0, vol], ["triangle", 0.5, vol * 0.28]]) {
       const o = actx.createOscillator(), g = actx.createGain();
       o.type = layer[0]; o.frequency.value = f + layer[1]; g.gain.value = 0; o.connect(g); g.connect(musicGain);
       g.gain.linearRampToValueAtTime(layer[2], t + dur * 0.3); g.gain.linearRampToValueAtTime(layer[2] * 0.8, t + dur * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + dur);
@@ -577,9 +579,9 @@
   function playMelodyNote(f, delay, vol) {
     setTimeout(() => {
       if (!actx) return; const o = actx.createOscillator(), g = actx.createGain(), lp = actx.createBiquadFilter();
-      lp.type = "lowpass"; lp.frequency.value = 1400; o.type = "triangle"; o.frequency.value = f; g.gain.value = 0;
+      lp.type = "lowpass"; lp.frequency.value = 850; lp.Q.value = 0.6; o.type = "sine"; o.frequency.value = f; g.gain.value = 0;
       o.connect(lp); lp.connect(g); g.connect(musicGain); const t = actx.currentTime;
-      g.gain.linearRampToValueAtTime(vol, t + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.7); o.start(t); o.stop(t + 1.8);
+      g.gain.linearRampToValueAtTime(vol, t + 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2); o.start(t); o.stop(t + 2.3);
     }, delay);
   }
   function musicLoop() {
