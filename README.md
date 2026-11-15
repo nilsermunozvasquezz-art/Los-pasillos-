@@ -16,6 +16,8 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 
 - Varios **pisos** temáticos (El Complejo, La Biblioteca, La Enfermería) con habitaciones y un monstruo por piso
 - **Habitaciones con puertas automáticas** que se abren al acercarte
+- **Sala de control** en una esquina de cada piso: su consola revela el mapa entero y localiza al monstruo 8 s
+- **Ascensor** para bajar de piso, con cinemática dentro de la cabina
 - **Mobiliario** según el escenario: cajas en el complejo, mesas en la biblioteca, camillas en la enfermería
 - Suelos y muros con **texturas continuas** (hormigón, tablones de madera, baldosas)
 - Laberinto generado al azar; linterna direccional (cono 110°) con parpadeos y apagones
