@@ -581,7 +581,7 @@
   }
   function interact() {
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
-    if (nearGen && !generator.on) { generator.on = true; nearGen = false; beep(90, 0.3, "sawtooth", 0.2); setTimeout(() => beep(180, 0.25, "square", 0.14), 160); setTimeout(() => beep(300, 0.2, "square", 0.12), 340); for (const w of wallLights) { w.on = true; w.toggleAt = performance.now() + 2500; } flashWhiteUntil = performance.now() + 90; flashMsg("¡Generador encendido! La puerta tiene energía"); return; }
+    if (nearGen && !generator.on) { generator.on = true; nearGen = false; beep(90, 0.3, "sawtooth", 0.2); setTimeout(() => beep(180, 0.25, "square", 0.14), 160); setTimeout(() => beep(300, 0.2, "square", 0.12), 340); for (const w of wallLights) { w.on = true; w.toggleAt = performance.now() + 1200; } flashWhiteUntil = performance.now() + 90; flashMsg("¡Generador encendido! La puerta tiene energía"); return; }
     if (nearLocker) { player.hidden = true; player.x = nearLocker.x; player.y = nearLocker.y; beep(200, 0.2, "sine", 0.12); flashMsg("Te escondes… conten la respiración"); }
   }
   function throwDecoy() {
@@ -839,10 +839,10 @@
 
     // Focos de pared (parpadean / se prenden y apagan)
     for (const w of wallLights) if (now >= w.toggleAt) {
-      if (generator.on) {        // CON energía: luz estable, apenas algún parpadeo
-        if (w.flick) { w.on = Math.random() < 0.9; w.toggleAt = now + 400 + Math.random() * 1200; }
-        else { w.on = Math.random() < 0.98; w.toggleAt = now + 3500 + Math.random() * 7000; }
-      } else {                   // SIN energía: parpadeo constante y apagones
+      if (generator.on) {        // CON energía: siguen los apagones, pero bastante menos seguidos
+        if (w.flick) { w.on = Math.random() < 0.78; w.toggleAt = now + 400 + Math.random() * 1400; }
+        else { w.on = Math.random() < 0.88; w.toggleAt = now + 2000 + Math.random() * 4500; }
+      } else {                   // SIN energía: parpadeo constante y apagones a cada rato
         if (w.flick) { w.on = Math.random() < 0.48; w.toggleAt = now + 70 + Math.random() * 420; }
         else { w.on = Math.random() < 0.68; w.toggleAt = now + 1100 + Math.random() * 3200; }
       }
