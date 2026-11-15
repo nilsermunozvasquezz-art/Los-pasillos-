@@ -1203,9 +1203,11 @@
       if (!w.on) continue;
       const sx = w.x - camX + shx, sy = w.y - camY + shy;
       if (sx < -80 || sy < -80 || sx > VIEW_W + 80 || sy > VIEW_H + 80) continue;
-      const R = (generator.on ? 74 : 62) * (0.85 + Math.random() * 0.15);
+      const R = (generator.on ? 88 : 60) * (0.85 + Math.random() * 0.15);   // con energía alumbran bastante más
       const g = mctx.createRadialGradient(sx, sy, 0, sx, sy, R);
-      g.addColorStop(0, "rgba(255,220,150,0.8)"); g.addColorStop(0.6, "rgba(200,160,90,0.3)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      g.addColorStop(0, "rgba(255,222,155,0.82)");
+      g.addColorStop(0.55, generator.on ? "rgba(208,168,98,0.36)" : "rgba(200,160,90,0.27)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = g; mctx.beginPath(); mctx.arc(sx, sy, R, 0, 7); mctx.fill();
     }
     ctx.globalCompositeOperation = "multiply"; ctx.drawImage(mask, 0, 0); ctx.globalCompositeOperation = "source-over";
