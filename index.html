@@ -442,11 +442,19 @@
     controlPanel = null; controlReadyAt = 0;
     const salaCtrl = rooms.find(r => r.control);
     if (salaCtrl) {
-      const gx = salaCtrl.x + ((salaCtrl.w / 2) | 0), gy = salaCtrl.y;
-      if (grid[gy] && grid[gy][gx] === 0 && !used.has(gx + "," + gy)) {
-        const cc = cellCenter(gx, gy);
-        controlPanel = { x: cc.x, y: cc.y, gx: gx, gy: gy, type: "consola", rot: 1, seed: 0.5, hw: 21, hh: 12 };
-        furniture.push(controlPanel); used.add(gx + "," + gy);
+      const vanos = salaCtrl.doors || [], libres = [];
+      const alVano = (x, y) => vanos.length ? Math.min.apply(null, vanos.map(d => Math.abs(d.gx - x) + Math.abs(d.gy - y))) : 99;
+      for (let y = salaCtrl.y; y < salaCtrl.y + salaCtrl.h; y++) for (let x = salaCtrl.x; x < salaCtrl.x + salaCtrl.w; x++) {
+        if (!grid[y] || grid[y][x] !== 0 || used.has(x + "," + y)) continue;
+        if (alVano(x, y) <= 2) continue;                                   // NUNCA delante de la entrada
+        const pegada = y === salaCtrl.y || y === salaCtrl.y + salaCtrl.h - 1 || x === salaCtrl.x || x === salaCtrl.x + salaCtrl.w - 1;
+        libres.push({ x: x, y: y, pegada: pegada ? 1 : 0 });
+      }
+      libres.sort((a, b) => (b.pegada - a.pegada) || (alVano(b.x, b.y) - alVano(a.x, a.y)));  // pegada al muro y lo más lejos del vano
+      if (libres.length) {
+        const e = libres[0], cc = cellCenter(e.x, e.y);
+        controlPanel = { x: cc.x, y: cc.y, gx: e.x, gy: e.y, type: "consola", rot: 1, seed: 0.5, hw: 21, hh: 12 };
+        furniture.push(controlPanel); used.add(e.x + "," + e.y);
       }
     }
     for (const r of rooms) {
@@ -489,6 +497,7 @@
       return true;
     };
     while (furniture.length && !pasable()) furniture.pop();
+    if (controlPanel && furniture.indexOf(controlPanel) < 0) controlPanel = null;   // por si hubo que retirarla
     furnSet = new Set(furniture.map(f => f.gx + "," + f.gy));
 
     let es = cells[(cells.length * 0.6) | 0]; for (const [x, y] of cells) if (sd[y][x] > ROWS * 0.6) { es = [x, y]; break; }
