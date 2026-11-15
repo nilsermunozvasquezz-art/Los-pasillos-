@@ -10,19 +10,19 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 
 - **Mover:** WASD / flechas (joystick en móvil, o control/gamepad 🎮)
 - **Shift:** correr · **F:** linterna · **E:** esconderte / activar generador · **Q:** señuelo · **R:** radar · **P:** pausa
-- **Objetivo:** reúne 5 llaves por piso, baja y escapa del último
+- **Objetivo de cada piso:** ① junta las **5 llaves** · ② activa el **generador** (E) · ③ entra al **ascensor** y baja. El ascensor solo abre con las 5 llaves **y** con energía (su luz pasa de roja a verde). Al bajar del último piso escapas.
 
 ## Características
 
 - Varios **pisos** temáticos (El Complejo, La Biblioteca, La Enfermería) con habitaciones y un monstruo por piso
 - **Habitaciones con puertas automáticas** que se abren al acercarte
-- **Sala de control** en una esquina de cada piso: su consola revela el mapa entero y localiza al monstruo 8 s
+- **Sala de control** en una esquina de cada piso: su consola de **cámaras** marca en el minimapa dónde están las llaves que faltan, el generador y el ascensor (20 s) y localiza al monstruo (8 s). Reutilizable cada 25 s — no dibuja los pasillos, solo los objetivos
 - **Ascensor** para bajar de piso, con cinemática dentro de la cabina
 - **Mobiliario** según el escenario: cajas en el complejo, mesas en la biblioteca, camillas en la enfermería
 - Suelos y muros con **texturas continuas** (hormigón, tablones de madera, baldosas)
 - Laberinto generado al azar; linterna direccional (cono 110°) con parpadeos y apagones
 - **La luz atrae al monstruo**: apágala para pasar desapercibido · pilas, armarios, trampas
-- Ítems: llave maestra (+2), señuelos, botas (correr), radar (ubica al monstruo 3 s), mapa del piso
+- Ítems: llave maestra (+2), señuelos, botas (correr), radar (ubica al monstruo 3 s), mapa del piso (dibuja los pasillos en el minimapa)
 - **Niebla en el minimapa** (se revela lo explorado) y **generador** que da energía a la puerta
 - **Partida guardada**: continúa en el piso donde ibas
 - Barra de **cordura** (distorsiona la pantalla), **huellas** y gruñido direccional

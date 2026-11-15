@@ -152,7 +152,8 @@
   <div class="screen hidden" id="tutScreen">
     <h2>CÓMO JUGAR</h2>
     <div class="story">
-      <p>🎯 <b>Objetivo:</b> en cada piso, reúne las <span class="hi">5 llaves</span> y cruza la <span class="hi">puerta</span>. Baja hasta escapar del último piso.</p>
+      <p>🎯 <b>Objetivo de cada piso:</b> ① junta las <span class="hi">5 llaves</span> · ② activa el <span class="hi">generador ⚡</span> (E) · ③ entra al <span class="hi">ascensor 🛗</span> y baja. El ascensor <b>solo abre con las 5 llaves y con energía</b>: su luz es roja si falta algo y verde cuando está listo. Al bajar del último piso escapas.</p>
+      <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
       <p>🧠 <b>Cordura:</b> baja con el miedo y distorsiona la pantalla; se recupera escondido o lejos del peligro. Cuidado con las <span class="hi">trampas</span> del suelo.</p>
@@ -371,7 +372,7 @@
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0 };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0 };
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
-  let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0;
+  let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false, roomDoors = [], furniture = [], furnSet = new Set();
   let controlPanel = null, nearControl = false, controlReadyAt = 0;
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
@@ -438,7 +439,7 @@
     // Mobiliario dentro de las habitaciones, según el escenario
     furniture = []; furnSet = new Set();
     const tema = FLOORS[floorIdx].theme;
-    // Consola de la sala de control (pegada a la pared de arriba de esa sala)
+    // Consola de cámaras de la sala de control (nunca delante de un vano)
     controlPanel = null; controlReadyAt = 0;
     const salaCtrl = rooms.find(r => r.control);
     if (salaCtrl) {
@@ -528,7 +529,7 @@
 
     explored = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
     decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; nearGen = false; fearPulse = 0;
-    glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0; radarUntil = 0;
+    glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0; radarUntil = 0; trackUntil = 0;
     document.getElementById("stamWrap").style.display = player.hasBoots ? "flex" : "none";
     updateHud(); updateBatt(); updateSan(); updateFloorHud();
   }
@@ -614,11 +615,11 @@
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
     if (nearControl) {
       const ahora = performance.now();
-      if (ahora < controlReadyAt) { flashMsg("La consola se está reiniciando…"); return; }
-      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) explored[y][x] = true;   // mapa completo
-      radarUntil = ahora + 8000; controlReadyAt = ahora + 25000;                              // y rastrea al monstruo 8s
+      if (ahora < controlReadyAt) { flashMsg("Las cámaras se están reiniciando…"); return; }
+      radarUntil = ahora + 8000; trackUntil = ahora + 20000; controlReadyAt = ahora + 25000;  // cámaras: monstruo 8 s, objetivos 20 s
       beep(1400, 0.07, "sine", 0.16); setTimeout(() => beep(1000, 0.09, "sine", 0.15), 90); setTimeout(() => beep(1700, 0.14, "sine", 0.14), 190);
-      flashMsg("CONSOLA: mapa completo y monstruo localizado (8 s)");
+      const faltan = KEY_COUNT - collected;
+      flashMsg("CÁMARAS: monstruo 8 s · " + (faltan > 0 ? faltan + " llave(s) marcada(s)" : "salida marcada") + " 20 s");
       return;
     }
     if (nearGen && !generator.on) { generator.on = true; nearGen = false; beep(90, 0.3, "sawtooth", 0.2); setTimeout(() => beep(180, 0.25, "square", 0.14), 160); setTimeout(() => beep(300, 0.2, "square", 0.12), 340); for (const w of wallLights) { w.on = true; w.toggleAt = performance.now() + 1200; } flashWhiteUntil = performance.now() + 90; flashMsg("¡Generador encendido! La puerta tiene energía"); return; }
@@ -916,7 +917,7 @@
       for (const b of boots) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 11) { b.taken = true; player.hasBoots = true; document.getElementById("stamWrap").style.display = "flex"; beep(300, 0.1, "square", 0.18); setTimeout(() => beep(450, 0.12, "square", 0.18), 80); flashMsg("¡Botas! Mantén Shift para correr"); }
       for (const dp of decoyPickups) if (!dp.taken && dist(player.x, player.y, dp.x, dp.y) < PLAYER_R + 11) { dp.taken = true; player.decoys += 2; beep(640, 0.09, "square", 0.16); flashMsg("Señuelos +2 (Q para lanzar)"); updateHud(); }
       for (const rd of radars) if (!rd.taken && dist(player.x, player.y, rd.x, rd.y) < PLAYER_R + 11) { rd.taken = true; player.radars++; beep(900, 0.08, "sine", 0.16); flashMsg("Radar +1 (R para ver al monstruo)"); updateHud(); }
-      for (const m of mapItems) if (!m.taken && dist(player.x, player.y, m.x, m.y) < PLAYER_R + 11) { m.taken = true; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) explored[y][x] = true; beep(700, 0.09, "sine", 0.16); setTimeout(() => beep(1000, 0.1, "sine", 0.14), 90); flashMsg("Mapa del piso: minimapa revelado"); }
+      for (const m of mapItems) if (!m.taken && dist(player.x, player.y, m.x, m.y) < PLAYER_R + 11) { m.taken = true; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) explored[y][x] = true; beep(700, 0.09, "sine", 0.16); setTimeout(() => beep(1000, 0.1, "sine", 0.14), 90); flashMsg("Mapa del piso: pasillos revelados"); }
       for (const n of notes) if (!n.taken && dist(player.x, player.y, n.x, n.y) < PLAYER_R + 10) { n.taken = true; notesFound++; document.getElementById("noteCount").textContent = notesFound; beep(330, 0.12, "sine", 0.14); showNote(n.text); }
       for (const tr of traps) if (!tr.triggered && dist(player.x, player.y, tr.x, tr.y) < 16) { tr.triggered = true; player.stunUntil = now + 900; enemy.alertUntil = now + 4500; enemy.lureUntil = 0; enemy.chasing = true; enemy.repathT = 0; player.sanity = Math.max(0, player.sanity - 12); beep(140, 0.25, "sawtooth", 0.3); setTimeout(() => beep(90, 0.3, "sawtooth", 0.25), 120); flashMsg("¡TRAMPA! El ruido lo atrajo"); }
       if (dist(player.x, player.y, door.x, door.y) < PLAYER_R + 16) {
@@ -1210,7 +1211,7 @@
     if (player.hidden) { ctx.fillStyle = "rgba(190,190,200,0.55)"; ctx.font = "13px Courier New"; ctx.textAlign = "center"; ctx.fillText("· escondido ·  (E para salir)", px2, py2 + BASE_VISION * 0.6 + 8); ctx.textAlign = "left"; }
 
     const _pad = 10, _h = ROWS * 4;
-    if (running && (player.light || now < radarUntil)) { drawMinimap(); drawClock(_pad + _h + 6); }
+    if (running && (player.light || now < radarUntil || now < trackUntil)) { drawMinimap(); drawClock(_pad + _h + 6); }
     else if (running) drawClock(_pad);
   }
 
@@ -1518,7 +1519,8 @@
     ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(ox - 4, oy - 4, w + 8, h + 8);
     ctx.strokeStyle = "rgba(120,130,150,0.4)"; ctx.strokeRect(ox - 4.5, oy - 4.5, w + 9, h + 9);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[y][x] === 0 && explored[y][x]) { ctx.fillStyle = "rgba(90,84,76,0.5)"; ctx.fillRect(ox + x * s, oy + y * s, s, s); }
-    const t = performance.now() / 300, seen = (gx, gy) => explored[gy] && explored[gy][gx];
+    const t = performance.now() / 300, rastreo = performance.now() < trackUntil;
+    const seen = (gx, gy) => rastreo || (explored[gy] && explored[gy][gx]);   // las cámaras marcan objetivos aunque no conozcas el camino
     for (const k of keys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); if (!seen(gx, gy)) continue; ctx.fillStyle = "rgba(255,207,77," + (0.5 + Math.sin(t + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
     for (const k of masterKeys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); if (!seen(gx, gy)) continue; ctx.fillStyle = "rgba(255,170,40," + (0.5 + Math.sin(t * 1.5 + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
     if (controlPanel && seen(controlPanel.gx, controlPanel.gy)) { ctx.fillStyle = "rgba(110,225,245," + (0.55 + Math.sin(t * 1.2) * 0.45) + ")"; ctx.fillRect(ox + controlPanel.gx * s - 1, oy + controlPanel.gy * s - 1, s + 2, s + 2); }
@@ -1544,7 +1546,7 @@
   function updateBatt() { const b = Math.max(0, player.battery); elBatt.style.width = b + "%"; elBatt.style.background = !player.light ? "#3a4048" : b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)"; }
   function updateSan() { const v = Math.max(0, player.sanity); elSan.style.width = v + "%"; elSan.style.background = v < 30 ? "linear-gradient(90deg,#7a2e8a,#c04bd0)" : "linear-gradient(90deg,#5a4a9a,#9a86d0)"; elStam.style.width = player.stamina + "%"; elStam.style.background = "linear-gradient(90deg,#8a6a2a,#d0b060)"; }
   function updatePrompt() { if (nearGen && !player.hidden) { elPrompt.innerHTML = "<b>E</b> activar generador"; elPrompt.classList.add("show"); }
-    else if (nearControl && !player.hidden) { const esp = Math.ceil((controlReadyAt - performance.now()) / 1000); elPrompt.innerHTML = esp > 0 ? "consola recargando… <b>" + esp + "s</b>" : "<b>E</b> usar la consola"; elPrompt.classList.add("show"); } else if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
+    else if (nearControl && !player.hidden) { const esp = Math.ceil((controlReadyAt - performance.now()) / 1000); elPrompt.innerHTML = esp > 0 ? "cámaras reiniciando… <b>" + esp + "s</b>" : "<b>E</b> ver las cámaras"; elPrompt.classList.add("show"); } else if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
   function flashMsg(txt) { elMsg.textContent = txt; elMsg.classList.add("show"); clearTimeout(msgTimer); msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1900); }
   function showNote(html) { elNote.innerHTML = "“" + html + "”"; elNote.classList.add("show"); clearTimeout(noteTimer); noteTimer = setTimeout(() => elNote.classList.remove("show"), 6500); }
   function fmt(sec) { const m = Math.floor(sec / 60), s = Math.floor(sec % 60); return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); }
