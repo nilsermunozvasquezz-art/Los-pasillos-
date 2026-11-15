@@ -417,8 +417,39 @@
     door.gx = far[0]; door.gy = far[1]; const dc = cellCenter(door.gx, door.gy); door.x = dc.x; door.y = dc.y;
 
     const used = new Set(["1,1", door.gx + "," + door.gy]);
-    const farOrder = cells.filter(([x, y]) => sd[y][x] > 3).sort((a, b) => sd[b[1]][b[0]] - sd[a[1]][a[0]]);
-    const nearOrder = cells.filter(([x, y]) => sd[y][x] > 2).slice(); shuffle(nearOrder);
+    // Los vanos (y la casilla de delante y de detrás) quedan SIEMPRE despejados:
+    // ahí va la puerta automática, así que nada de armarios, llaves ni trampas encima.
+    for (const r of rooms) for (const d of (r.doors || [])) {
+      used.add(d.gx + "," + d.gy);
+      used.add((d.gx + 1) + "," + d.gy); used.add((d.gx - 1) + "," + d.gy);
+      used.add(d.gx + "," + (d.gy + 1)); used.add(d.gx + "," + (d.gy - 1));
+    }
+    // La consola de cámaras se coloca antes que los objetos, para que nada le caiga encima
+    furniture = []; furnSet = new Set();
+    controlPanel = null; controlReadyAt = 0;
+    const salaCtrl = rooms.find(r => r.control);
+    if (salaCtrl) {
+      const vanos = salaCtrl.doors || [], libres = [];
+      const alVano = (x, y) => vanos.length ? Math.min.apply(null, vanos.map(d => Math.abs(d.gx - x) + Math.abs(d.gy - y))) : 99;
+      for (let y = salaCtrl.y; y < salaCtrl.y + salaCtrl.h; y++) for (let x = salaCtrl.x; x < salaCtrl.x + salaCtrl.w; x++) {
+        if (!grid[y] || grid[y][x] !== 0 || used.has(x + "," + y)) continue;
+        if (alVano(x, y) <= 2) continue;                                   // NUNCA delante de la entrada
+        const pegada = y === salaCtrl.y || y === salaCtrl.y + salaCtrl.h - 1 || x === salaCtrl.x || x === salaCtrl.x + salaCtrl.w - 1;
+        libres.push({ x: x, y: y, pegada: pegada ? 1 : 0 });
+      }
+      libres.sort((a, b) => (b.pegada - a.pegada) || (alVano(b.x, b.y) - alVano(a.x, a.y)));  // pegada al muro y lo más lejos del vano
+      if (libres.length) {
+        const e = libres[0], cc = cellCenter(e.x, e.y);
+        controlPanel = { x: cc.x, y: cc.y, gx: e.x, gy: e.y, type: "consola", rot: 1, seed: 0.5, hw: 21, hh: 12 };
+        furniture.push(controlPanel); furnSet.add(e.x + "," + e.y);
+        used.add(e.x + "," + e.y);                                         // y deja un hueco alrededor para poder usarla
+        used.add((e.x + 1) + "," + e.y); used.add((e.x - 1) + "," + e.y);
+        used.add(e.x + "," + (e.y + 1)); used.add(e.x + "," + (e.y - 1));
+      }
+    }
+    const libreDeVano = ([x, y]) => !used.has(x + "," + y);
+    const farOrder = cells.filter(([x, y]) => sd[y][x] > 3).filter(libreDeVano).sort((a, b) => sd[b[1]][b[0]] - sd[a[1]][a[0]]);
+    const nearOrder = cells.filter(([x, y]) => sd[y][x] > 2).filter(libreDeVano); shuffle(nearOrder);
 
     keys = pickSpread(farOrder, KEY_COUNT, 4, used).map(mk);
     masterKeys = pickSpread(farOrder.slice().reverse(), N_MASTERKEY, 3, used).map(mk);
@@ -437,32 +468,12 @@
     traps = pickSpread(nearOrder, N_TRAPS, 2, used).map(([x, y]) => { const c = cellCenter(x, y); return { x: c.x, y: c.y, triggered: false }; });
 
     // Mobiliario dentro de las habitaciones, según el escenario
-    furniture = []; furnSet = new Set();
     const tema = FLOORS[floorIdx].theme;
-    // Consola de cámaras de la sala de control (nunca delante de un vano)
-    controlPanel = null; controlReadyAt = 0;
-    const salaCtrl = rooms.find(r => r.control);
-    if (salaCtrl) {
-      const vanos = salaCtrl.doors || [], libres = [];
-      const alVano = (x, y) => vanos.length ? Math.min.apply(null, vanos.map(d => Math.abs(d.gx - x) + Math.abs(d.gy - y))) : 99;
-      for (let y = salaCtrl.y; y < salaCtrl.y + salaCtrl.h; y++) for (let x = salaCtrl.x; x < salaCtrl.x + salaCtrl.w; x++) {
-        if (!grid[y] || grid[y][x] !== 0 || used.has(x + "," + y)) continue;
-        if (alVano(x, y) <= 2) continue;                                   // NUNCA delante de la entrada
-        const pegada = y === salaCtrl.y || y === salaCtrl.y + salaCtrl.h - 1 || x === salaCtrl.x || x === salaCtrl.x + salaCtrl.w - 1;
-        libres.push({ x: x, y: y, pegada: pegada ? 1 : 0 });
-      }
-      libres.sort((a, b) => (b.pegada - a.pegada) || (alVano(b.x, b.y) - alVano(a.x, a.y)));  // pegada al muro y lo más lejos del vano
-      if (libres.length) {
-        const e = libres[0], cc = cellCenter(e.x, e.y);
-        controlPanel = { x: cc.x, y: cc.y, gx: e.x, gy: e.y, type: "consola", rot: 1, seed: 0.5, hw: 21, hh: 12 };
-        furniture.push(controlPanel); used.add(e.x + "," + e.y);
-      }
-    }
     for (const r of rooms) {
       const celdas = [];
       for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
         if (used.has(x + "," + y) || grid[y][x] !== 0) continue;
-        if ((r.doors || []).some(d => Math.abs(d.gx - x) + Math.abs(d.gy - y) <= 1)) continue;  // deja libre el vano
+        if ((r.doors || []).some(d => Math.abs(d.gx - x) + Math.abs(d.gy - y) <= 2)) continue;  // deja libre el vano y su paso
         celdas.push([x, y]);
       }
       shuffle(celdas);
