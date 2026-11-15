@@ -581,7 +581,7 @@
   }
   function interact() {
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
-    if (nearGen && !generator.on) { generator.on = true; nearGen = false; beep(90, 0.3, "sawtooth", 0.2); setTimeout(() => beep(180, 0.25, "square", 0.14), 160); setTimeout(() => beep(300, 0.2, "square", 0.12), 340); for (const w of wallLights) { w.on = true; w.toggleAt = performance.now() + 600; } flashMsg("¡Generador encendido! La puerta tiene energía"); return; }
+    if (nearGen && !generator.on) { generator.on = true; nearGen = false; beep(90, 0.3, "sawtooth", 0.2); setTimeout(() => beep(180, 0.25, "square", 0.14), 160); setTimeout(() => beep(300, 0.2, "square", 0.12), 340); for (const w of wallLights) { w.on = true; w.toggleAt = performance.now() + 2500; } flashWhiteUntil = performance.now() + 90; flashMsg("¡Generador encendido! La puerta tiene energía"); return; }
     if (nearLocker) { player.hidden = true; player.x = nearLocker.x; player.y = nearLocker.y; beep(200, 0.2, "sine", 0.12); flashMsg("Te escondes… conten la respiración"); }
   }
   function throwDecoy() {
@@ -839,8 +839,13 @@
 
     // Focos de pared (parpadean / se prenden y apagan)
     for (const w of wallLights) if (now >= w.toggleAt) {
-      if (w.flick) { w.on = Math.random() < 0.72; w.toggleAt = now + 80 + Math.random() * 480; }
-      else { w.on = Math.random() < 0.86; w.toggleAt = now + 1500 + Math.random() * 4200; }
+      if (generator.on) {        // CON energía: luz estable, apenas algún parpadeo
+        if (w.flick) { w.on = Math.random() < 0.9; w.toggleAt = now + 400 + Math.random() * 1200; }
+        else { w.on = Math.random() < 0.98; w.toggleAt = now + 3500 + Math.random() * 7000; }
+      } else {                   // SIN energía: parpadeo constante y apagones
+        if (w.flick) { w.on = Math.random() < 0.48; w.toggleAt = now + 70 + Math.random() * 420; }
+        else { w.on = Math.random() < 0.68; w.toggleAt = now + 1100 + Math.random() * 3200; }
+      }
     }
     // Clima (lluvia que sube/baja de intensidad)
     weather.intensity += ((weather.raining ? 1 : 0) - weather.intensity) * Math.min(1, dtSec * 0.6);
@@ -1198,7 +1203,7 @@
       if (!w.on) continue;
       const sx = w.x - camX + shx, sy = w.y - camY + shy;
       if (sx < -80 || sy < -80 || sx > VIEW_W + 80 || sy > VIEW_H + 80) continue;
-      const R = 64 * (0.85 + Math.random() * 0.15);
+      const R = (generator.on ? 74 : 62) * (0.85 + Math.random() * 0.15);
       const g = mctx.createRadialGradient(sx, sy, 0, sx, sy, R);
       g.addColorStop(0, "rgba(255,220,150,0.8)"); g.addColorStop(0.6, "rgba(200,160,90,0.3)"); g.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = g; mctx.beginPath(); mctx.arc(sx, sy, R, 0, 7); mctx.fill();
@@ -1352,12 +1357,46 @@
     ctx.restore();
   }
   function drawGenerator() {
-    const g = generator;
-    ctx.fillStyle = "#23262c"; ctx.fillRect(g.x - 15, g.y - 14, 30, 30);
-    ctx.fillStyle = "#33373f"; ctx.fillRect(g.x - 12, g.y - 11, 24, 24);
-    ctx.fillStyle = "#1a1d22"; for (let i = 0; i < 3; i++) ctx.fillRect(g.x - 9, g.y - 6 + i * 6, 18, 2);
-    ctx.strokeStyle = "#8a8a92"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(g.x + 8, g.y + 8); ctx.lineTo(g.x + 8 + (g.on ? 5 : -5), g.y); ctx.stroke();
-    ctx.save(); ctx.shadowColor = g.on ? "rgba(90,230,90,0.9)" : "rgba(230,60,60,0.85)"; ctx.shadowBlur = 13; ctx.fillStyle = g.on ? "#6ad46a" : "#e05555"; ctx.beginPath(); ctx.arc(g.x, g.y - 18, 3, 0, 7); ctx.fill(); ctx.restore();
+    const g = generator, on = g.on, t = performance.now();
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.42)";                                           // sombra
+    ctx.beginPath(); ctx.ellipse(g.x, g.y + 15, 21, 8, 0, 0, 7); ctx.fill();
+    if (on) ctx.translate((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 0.9); // vibra al funcionar
+    ctx.fillStyle = "#15181c"; ctx.fillRect(g.x - 19, g.y - 18, 38, 36);          // chasis
+    ctx.fillStyle = "#4b525d"; ctx.fillRect(g.x - 17, g.y - 16, 34, 32);          // cuerpo metálico
+    ctx.fillStyle = "#616b78"; ctx.fillRect(g.x - 17, g.y - 16, 34, 4);           // brillo superior
+    ctx.fillStyle = "#2e333b"; ctx.fillRect(g.x - 17, g.y + 12, 34, 4);           // sombra inferior
+    ctx.save();                                                                    // franja de peligro
+    ctx.beginPath(); ctx.rect(g.x - 17, g.y - 16, 34, 6); ctx.clip();
+    ctx.fillStyle = "#d8a714"; ctx.fillRect(g.x - 17, g.y - 16, 34, 6);
+    ctx.fillStyle = "#17171a";
+    for (let i = -1; i < 8; i++) { ctx.beginPath(); ctx.moveTo(g.x - 17 + i * 6, g.y - 16); ctx.lineTo(g.x - 17 + i * 6 + 3, g.y - 16); ctx.lineTo(g.x - 17 + i * 6 - 3, g.y - 10); ctx.lineTo(g.x - 17 + i * 6 - 6, g.y - 10); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.fillStyle = "#20242a"; ctx.fillRect(g.x - 14, g.y - 7, 14, 16);           // rejilla de ventilación
+    ctx.fillStyle = "#3d434c"; for (let i = 0; i < 4; i++) ctx.fillRect(g.x - 13, g.y - 6 + i * 4, 12, 2);
+    ctx.fillStyle = "#111419"; ctx.fillRect(g.x + 2, g.y - 7, 14, 16);            // panel de control
+    ctx.strokeStyle = "#2b313a"; ctx.lineWidth = 1; ctx.strokeRect(g.x + 2.5, g.y - 6.5, 13, 15);
+    ctx.save();                                                                    // piloto de estado
+    ctx.shadowColor = on ? "rgba(95,235,95,0.95)" : "rgba(235,60,60,0.9)"; ctx.shadowBlur = on ? 15 : 10;
+    ctx.fillStyle = on ? "#7ceb7c" : "#e85555";
+    ctx.beginPath(); ctx.arc(g.x + 9, g.y - 2.5, 3.1, 0, 7); ctx.fill(); ctx.restore();
+    const ang = on ? -0.55 + Math.sin(t / 130) * 0.2 : -2.3;                      // aguja del medidor
+    ctx.strokeStyle = "#39404a"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(g.x + 9, g.y + 5.5, 4.5, Math.PI, 0); ctx.stroke();
+    ctx.strokeStyle = on ? "#9ff0a0" : "#8e97a2"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(g.x + 9, g.y + 5.5); ctx.lineTo(g.x + 9 + Math.cos(ang) * 4.5, g.y + 5.5 + Math.sin(ang) * 4.5); ctx.stroke();
+    ctx.fillStyle = "#8a939e";                                                     // tornillos
+    for (const o of [[-15, -14], [15, -14], [-15, 14], [15, 14]]) { ctx.beginPath(); ctx.arc(g.x + o[0], g.y + o[1], 1.7, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = "#262a31"; ctx.lineWidth = 5.5; ctx.lineCap = "round";       // PALANCA grande
+    ctx.beginPath(); ctx.moveTo(g.x + 18, g.y + 6); ctx.lineTo(g.x + 18 + (on ? 9 : -1), g.y + (on ? -6 : -10)); ctx.stroke();
+    ctx.fillStyle = on ? "#6ad46a" : "#d04a4a";
+    ctx.beginPath(); ctx.arc(g.x + 18 + (on ? 9 : -1), g.y + (on ? -6 : -10), 3.6, 0, 7); ctx.fill();
+    ctx.lineCap = "butt";
+    if (on) {                                                                      // resplandor al funcionar
+      const gl = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, 36);
+      gl.addColorStop(0, "rgba(120,230,120,0.15)"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(g.x, g.y, 36, 0, 7); ctx.fill();
+    }
+    ctx.restore();
   }
   function drawMapItem(m, t) {
     const g = 0.5 + Math.sin(t * 1.2 + m.x) * 0.4; ctx.save(); ctx.shadowColor = "rgba(120,170,230," + g + ")"; ctx.shadowBlur = 11;
