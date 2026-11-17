@@ -1030,7 +1030,7 @@
       // Su linterna gasta pila al mismo ritmo que la tuya, y solo mientras está encendida
       if (player.light && c.batt > 0) {
         c.batt = Math.max(0, c.batt - diff.batt * dtSec);
-        if (c.batt <= 0 && !c.sinPila) { c.sinPila = true; flashMsg("A " + c.name + " se le acabó la pila"); beep(170, 0.1, "square", 0.1); }
+        if (c.batt <= 0 && !c.sinPila) { c.sinPila = true; flashMsg("A " + c.name + " se le agotó la pila — apenas alumbra"); beep(170, 0.1, "square", 0.1); }
       }
       const dp = dist(c.x, c.y, player.x, player.y);
       const cojera = herido ? 0.82 : 1;
@@ -1585,11 +1585,11 @@
       mctx.fillStyle = h; mctx.beginPath(); mctx.arc(sx, sy, halo, 0, 7); mctx.fill();
       const cb = c.batt / 100;
       const miCono = compaCono * (0.4 + 0.6 * cb);           // cuanta menos pila, menos alcance
-      if (player.light && c.batt > 0 && miCono > 1) {        // sin pila (o con la tuya apagada) se queda a oscuras
+      if (player.light && miCono > 1) {                      // igual que la tuya: sin pila NO se apaga, solo alumbra poco
         mctx.save();
         mctx.beginPath(); mctx.moveTo(sx, sy); mctx.arc(sx, sy, miCono, c.face - compaHalf, c.face + compaHalf); mctx.closePath(); mctx.clip();
         const gc = mctx.createRadialGradient(sx, sy, halo * 0.5, sx, sy, miCono);
-        gc.addColorStop(0, "rgba(250,243,220," + (0.55 + 0.37 * cb).toFixed(3) + ")"); gc.addColorStop(0.55, "rgba(228,218,185,0.6)"); gc.addColorStop(1, "rgba(0,0,0,0)");
+        gc.addColorStop(0, "rgba(250,243,220," + (0.68 + 0.24 * cb).toFixed(3) + ")"); gc.addColorStop(0.55, "rgba(228,218,185,0.6)"); gc.addColorStop(1, "rgba(0,0,0,0)");
         mctx.fillStyle = gc; mctx.fillRect(sx - miCono, sy - miCono, miCono * 2, miCono * 2);
         mctx.restore();
       }
@@ -1630,9 +1630,9 @@
     const gx = x + Math.cos(c.face) * (r + 5), gy = y + Math.sin(c.face) * (r + 5);   // el cañón del arma
     ctx.strokeStyle = "#1b1f25"; ctx.lineWidth = 3; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(x + Math.cos(c.face) * r, y + Math.sin(c.face) * r); ctx.lineTo(gx, gy); ctx.stroke(); ctx.lineCap = "butt";
-    if (player.light && c.batt > 0) {                                        // su linterna: el color avisa de la pila
+    if (player.light) {                                                     // su linterna: el color avisa de la pila
       const pb = c.batt / 100;
-      ctx.fillStyle = pb < 0.25 ? "#c08a3a" : pb < 0.55 ? "#f0d888" : "#ffe9a8";
+      ctx.fillStyle = pb <= 0 ? "#a8742c" : pb < 0.25 ? "#c08a3a" : pb < 0.55 ? "#f0d888" : "#ffe9a8";
       ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.3 + pb * 0.6, 0, 7); ctx.fill();
     }
     if (now < c.hurtUntil) { ctx.fillStyle = "rgba(255,226,150,0.95)"; ctx.beginPath(); ctx.arc(gx, gy, 4.5, 0, 7); ctx.fill(); }   // fogonazo
