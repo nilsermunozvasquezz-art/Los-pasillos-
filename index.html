@@ -106,6 +106,7 @@
     <div id="hudLeft">
       <div id="floorHud">PISO 1/2 · El Complejo</div>
       <div id="keys">LLAVES: <b><span id="keyCount">0</span>/5</b></div>
+      <div class="bar" id="vidaWrap">VIDA <div class="track"><div class="fill" id="vidaFill"></div></div></div>
       <div class="bar" id="battWrap">LINTERNA <div class="track"><div class="fill" id="battFill"></div></div></div>
       <div class="bar" id="sanWrap">CORDURA <div class="track"><div class="fill" id="sanFill"></div></div></div>
       <div class="bar" id="stamWrap" style="display:none">ALIENTO <div class="track"><div class="fill" id="stamFill"></div></div></div>
@@ -378,17 +379,19 @@
   function hash(x, y) { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >> 13)) * 1274126177 | 0; return ((h ^ (h >> 16)) >>> 0) / 4294967295; }
 
   // ---------------------------------------------------------------- Estado
-  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0, ammo: 10, shootAt: 0, flashUntil: 0 };
-  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0, fleeUntil: 0, hits: 0, hurtUntil: 0, objetivo: null, objetivoHasta: 0 };
+  const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0, ammo: 10, shootAt: 0, flashUntil: 0, hp: 100, golpeAt: 0, dmgUntil: 0 };
+  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0, fleeUntil: 0, hits: 0, hurtUntil: 0, objetivo: null, objetivoHasta: 0, goteaHasta: 0, goteaAt: 0 };
   // Los 3 compas: te siguen, llevan su propia arma y pueden morir en tu lugar
   const COMPA_DEF = [
     { name: "Nico",  color: "#6fae7a", dark: "#2f4a35" },
     { name: "Rulo",  color: "#c08a55", dark: "#4a3524" },
     { name: "Checo", color: "#7f8fc0", dark: "#2f3650" },
   ];
-  let compas = [], bullets = [], ammoPickups = [];
-  let squadAlerta = 0, squadPos = null, exploraAt = 0, embestidaAt = 0, zarpazoCompaAt = 0;   // embestidas y descanso entre zarpazos a compas   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
+  let compas = [], bullets = [], ammoPickups = [], minis = [], salpicaduras = [];
+  const N_MINIS = 2, MINI_R = 8, MINI_VISTA = 210, MINI_RADIO = 54;   // los que revientan
+  let squadAlerta = 0, squadPos = null, exploraAt = 0, embestidaAt = 0, zarpazoCompaAt = 0;
+  let preso = null, nearPreso = false;   // el compa que se llevó, esperando rescate en el piso siguiente   // embestidas y descanso entre zarpazos a compas   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0, capturado: false });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -428,8 +431,9 @@
     const p = cellCenter(1, 1);
     player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0; player.face = Math.PI / 4;
     player.hidden = false; player.stunUntil = 0; player.light = true; player.stepAt = 0; player.stamina = 100;
-    if (fresh) { player.battery = 100; player.hasBoots = false; player.decoys = 0; player.radars = 0; player.sanity = 100; player.ammo = 10; }
-    else { player.sanity = Math.min(100, player.sanity + 35); }
+    if (fresh) { player.battery = 100; player.hasBoots = false; player.decoys = 0; player.radars = 0; player.sanity = 100; player.ammo = 10; player.hp = 100; }
+    else { player.sanity = Math.min(100, player.sanity + 35); player.hp = Math.min(100, player.hp + 40); }
+    player.golpeAt = 0; player.dmgUntil = 0;
 
     const sd = bfsFrom(1, 1);
     const cells = floorCells().filter(([x, y]) => sd[y][x] >= 0);
@@ -572,11 +576,44 @@
     cercaDeTi.sort((a, b) => sd[a[1]][a[0]] - sd[b[1]][b[0]]);
     vivos.forEach((c, i) => { const cl = cercaDeTi[i % Math.max(1, cercaDeTi.length)] || [1, 1]; const cc = cellCenter(cl[0], cl[1]); c.x = cc.x; c.y = cc.y; c.face = player.face; });
 
+    // ---- El compa que se llevó el monstruo: encerrado SOLO en una habitación de este piso
+    preso = null; nearPreso = false; minis = []; salpicaduras = [];
+    const cautivo = fresh ? null : compas.find(c => !c.alive && c.capturado);
+    const salas = rooms.filter(r => !r.control && r.w >= 3 && r.h >= 3);
+    if (cautivo && salas.length) {
+      const sala = salas[(Math.random() * salas.length) | 0];
+      const libres = [];
+      for (let y = sala.y; y < sala.y + sala.h; y++) for (let x = sala.x; x < sala.x + sala.w; x++) {
+        if (!grid[y] || grid[y][x] !== 0 || furnSet.has(x + "," + y)) continue;
+        if ((sala.doors || []).some(d => Math.abs(d.gx - x) + Math.abs(d.gy - y) <= 1)) continue;
+        libres.push([x, y]);
+      }
+      if (libres.length) {
+        const e = libres[(Math.random() * libres.length) | 0], cc = cellCenter(e[0], e[1]);
+        preso = { compa: cautivo, x: cc.x, y: cc.y, gx: e[0], gy: e[1] };
+        cautivo.capturado = false;                                    // una sola oportunidad: este piso
+        for (let k = 0; k < 2 && libres.length; k++) {                // dos minis guardándolo
+          const g = libres[(Math.random() * libres.length) | 0], gc = cellCenter(g[0], g[1]);
+          if (dist(gc.x, gc.y, cc.x, cc.y) < 20) continue;
+          minis.push({ x: gc.x, y: gc.y, face: 0, activo: false, muerto: false, path: [], repathT: 0, stepAt: 0, fase: Math.random() * 6.28 });
+        }
+      }
+    }
+    // ---- Y unos cuantos sueltos por el piso
+    {
+      const sueltos = cells.filter(([x, y]) => sd[y][x] > 6 && !furnSet.has(x + "," + y));
+      shuffle(sueltos);
+      for (const [x, y] of sueltos.slice(0, N_MINIS)) {
+        const cc = cellCenter(x, y);
+        minis.push({ x: cc.x, y: cc.y, face: 0, activo: false, muerto: false, path: [], repathT: 0, stepAt: 0, fase: Math.random() * 6.28 });
+      }
+    }
+
     explored = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
     decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; nearGen = false; fearPulse = 0;
     glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0; radarUntil = 0; trackUntil = 0;
     document.getElementById("stamWrap").style.display = player.hasBoots ? "flex" : "none";
-    updateHud(); updateBatt(); updateSan(); updateFloorHud();
+    updateHud(); updateBatt(); updateSan(); updateVida(); updateFloorHud();
   }
   function newRun() {
     floorIdx = 0; notesFound = 0; notesPlaced = 0; newRecord = false; newAch = []; runSprinted = false; runChased = false;
@@ -660,6 +697,17 @@
   }
   function interact() {
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
+    if (nearPreso && preso) {
+      const c = preso.compa;
+      c.alive = true; c.hp = 50; c.capturado = false; c.estado = "seguir"; c.path = []; c.repathT = 0;
+      c.ammo = Math.max(c.ammo, 4); c.batt = Math.max(c.batt, 40);
+      c.x = preso.x; c.y = preso.y; c.slot = compas.filter(o => o.alive).length - 1;
+      preso = null; nearPreso = false;
+      beep(600, 0.1, "sine", 0.18); setTimeout(() => beep(900, 0.12, "sine", 0.17), 90); setTimeout(() => beep(1200, 0.16, "sine", 0.16), 190);
+      player.sanity = Math.min(100, player.sanity + 18);
+      flashMsg("¡" + c.name + " rescatado!"); updateHud();
+      return;
+    }
     if (nearControl) {
       const ahora = performance.now();
       if (ahora < controlReadyAt) { flashMsg("Las cámaras se están reiniciando…"); return; }
@@ -675,6 +723,7 @@
   // ¿Hay algo delante que pida ACCIÓN? Si lo hay, el botón deja de disparar.
   function contextAction() {
     if (player.hidden) return "salir";
+    if (nearPreso) return "rescatar";
     if (nearControl) return "consola";
     if (nearGen && !generator.on) return "generador";
     if (nearLocker) return "armario";
@@ -1005,6 +1054,7 @@
   // ¡Se lo lleva! El compa desaparece en la oscuridad con la linterna encendida
   function arrastrar(c, now) {
     c.estado = "arrastrado"; c.estadoHasta = now + 2600 + Math.random() * 1300;
+    enemy.goteaHasta = now + 26000; enemy.goteaAt = 0;              // se va herido del forcejeo
     c.path = []; c.repathT = 99999;
     enemy.fleeUntil = now + 3600; enemy.chasing = false; enemy.lureUntil = 0; enemy.path = []; enemy.repathT = 0;
     squadAlerta = now + 6500; squadPos = { x: c.x, y: c.y };
@@ -1034,11 +1084,11 @@
         player.sanity = Math.max(0, player.sanity - 6 * dtSec);
         if (now >= c.gritoAt) { c.gritoAt = now + 650 + Math.random() * 500; const pn = Math.max(-1, Math.min(1, (c.x - player.x) / 300)); noise(0.3, 0.1, "bandpass", 900, pn); }
         if (now >= c.estadoHasta) {                                               // y se apaga
-          c.alive = false; spawnBlood(c.x, c.y, 9);
+          c.alive = false; c.capturado = true; spawnBlood(c.x, c.y, 9);
           const pn = Math.max(-1, Math.min(1, (c.x - player.x) / 300));
           growl(0.9, pn); noise(0.55, 0.28, "bandpass", 520, pn);
           player.sanity = Math.max(0, player.sanity - 16);
-          flashMsg(c.name + " ya no responde."); updateHud();
+          flashMsg("Se llevó a " + c.name + "… quizá siga vivo abajo."); updateHud();
         }
         continue;
       }
@@ -1154,12 +1204,74 @@
       }
     }
   }
+  // Reventón: salpica verde y rojo en el suelo y en las paredes de alrededor
+  function reventar(m, now) {
+    m.muerto = true;
+    const pan = Math.max(-1, Math.min(1, (m.x - player.x) / 300));
+    noise(0.09, 0.34, "lowpass", 260, pan);
+    setTimeout(() => noise(0.3, 0.16, "lowpass", 150, pan), 35);
+    for (let i = 0; i < 16; i++) {                                         // charco en el suelo
+      const a = Math.random() * 6.28, r = Math.random() * MINI_RADIO;
+      bloodDecals.push({ x: m.x + Math.cos(a) * r, y: m.y + Math.sin(a) * r, r: 3 + Math.random() * 9, rot: Math.random() * 6, verde: Math.random() < 0.62 });
+    }
+    if (bloodDecals.length > 150) bloodDecals.splice(0, bloodDecals.length - 150);
+    for (let i = 0; i < 26; i++) {                                         // y lo que pilla la pared
+      const a = Math.random() * 6.28;
+      for (let d = 10; d < MINI_RADIO + 26; d += 7) {
+        const px = m.x + Math.cos(a) * d, py = m.y + Math.sin(a) * d;
+        if (!isWall(px, py)) continue;
+        salpicaduras.push({ x: px, y: py, r: 3 + Math.random() * 7, rot: Math.random() * 6, verde: Math.random() < 0.6 });
+        break;
+      }
+    }
+    if (salpicaduras.length > 140) salpicaduras.splice(0, salpicaduras.length - 140);
+    if (dist(m.x, m.y, player.x, player.y) < MINI_RADIO && !player.hidden && now >= player.golpeAt) {
+      player.hp = Math.max(0, Math.round(player.hp) - 34); player.golpeAt = now + 900; player.dmgUntil = now + 320;
+      player.sanity = Math.max(0, player.sanity - 12); flashWhiteUntil = now + 70;
+      if (player.hp <= 0) { lose(); return; }
+      flashMsg("¡Te reventó encima! Vida " + player.hp + "%"); updateVida();
+    }
+    for (const c of compas) {
+      if (!c.alive || c.estado === "arrastrado" || dist(m.x, m.y, c.x, c.y) >= MINI_RADIO || now < c.golpeAt) continue;
+      c.hp = Math.max(0, Math.round(c.hp) - 34); c.golpeAt = now + 900; c.dmgUntil = now + 300;
+      if (c.hp <= 0) { c.alive = false; c.capturado = false; spawnBlood(c.x, c.y, 7); flashMsg(c.name + " cayó por el reventón"); }
+      else flashMsg("El reventón pilló a " + c.name);
+      updateHud();
+    }
+  }
+  function updateMinis(dt, now) {
+    for (const m of minis) {
+      if (m.muerto) continue;
+      const dp = dist(m.x, m.y, player.x, player.y);
+      if (!m.activo && !player.hidden && dp < MINI_VISTA && hasLineOfSight(m.x, m.y, player.x, player.y)) {
+        m.activo = true; m.chillo = now;
+        noise(0.14, 0.14, "bandpass", 1400, Math.max(-1, Math.min(1, (m.x - player.x) / 300)));
+      }
+      if (!m.activo) { m.face = Math.sin(now / 700 + m.fase) * 1.6; continue; }
+      if (dp < MINI_R + PLAYER_R + 4) { reventar(m, now); continue; }      // te alcanzó: revienta
+      m.repathT -= dt;
+      if (m.repathT <= 0 || !m.path.length) { m.path = pathTo(m.x, m.y, Math.floor(player.x / TILE), Math.floor(player.y / TILE)); m.repathT = 10; }
+      // Si la ruta está vacía (p. ej. ya estáis en la misma casilla) va en línea recta
+      const tg = m.path.length ? m.path[0] : { x: player.x, y: player.y };
+      const dx = tg.x - m.x, dy = tg.y - m.y, d = Math.hypot(dx, dy) || 1;
+      const sp = Math.min(PLAYER_SPEED * 1.35 * dt, 8, d);
+      if (!isWall(m.x + dx / d * sp, m.y + dy / d * sp)) { m.x += dx / d * sp; m.y += dy / d * sp; }
+      else { m.path = []; m.repathT = 0; }
+      if (m.path.length && d <= sp) m.path.shift();
+      m.face = Math.atan2(dy, dx);
+      if (now >= m.stepAt) { m.stepAt = now + 230; const v = Math.max(0, 1 - dp / MINI_VISTA) * 0.1; noise(0.04, v, "highpass", 1700, Math.max(-1, Math.min(1, (m.x - player.x) / 300))); }
+    }
+    minis = minis.filter(m => !m.muerto);
+  }
   function updateBullets(dt, now) {
     for (const b of bullets) {
       const pasos = Math.max(1, Math.ceil(BULLET_SPEED * dt / 6));              // avanza a trocitos para no atravesar muros
       for (let i = 0; i < pasos && b.life > 0; i++) {
         b.x += b.vx * dt / pasos; b.y += b.vy * dt / pasos;
         if (isWall(b.x, b.y)) { b.life = 0; noise(0.05, 0.1, "highpass", 2200, Math.max(-1, Math.min(1, (b.x - player.x) / 260))); break; }
+        let pop = null;
+        for (const m of minis) if (!m.muerto && dist(b.x, b.y, m.x, m.y) < MINI_R + 4) { pop = m; break; }
+        if (pop) { b.life = 0; pop.activo = true; reventar(pop, now); break; }   // un tiro y revienta
         if (dist(b.x, b.y, enemy.x, enemy.y) < 15) {
           b.life = 0; enemy.hits++; enemy.hurtUntil = now + 220;
           const embiste = !!enemy.objetivo && now < enemy.objetivoHasta;
@@ -1243,6 +1355,7 @@
     for (const L of lockers) if (dist(player.x, player.y, L.x, L.y) < 34) { nearLocker = L; break; }
     nearGen = !generator.on && dist(player.x, player.y, generator.x, generator.y) < 36;
     nearControl = !!controlPanel && dist(player.x, player.y, controlPanel.x, controlPanel.y) < 40;
+    nearPreso = !!preso && dist(player.x, player.y, preso.x, preso.y) < 40;
     updatePrompt();
 
     if (!player.hidden) {
@@ -1270,6 +1383,7 @@
     decoysActive = decoysActive.filter(d => d.until > now);
 
     updateCompas(dt, now);
+    updateMinis(dt, now);
     updateBullets(dt, now);
 
     const dToP = dist(enemy.x, enemy.y, player.x, player.y);
@@ -1322,6 +1436,12 @@
       setTimeout(() => noise(0.03, vol * 0.3, "lowpass", 520, pan), 25);
       enemy.stepAt = now + ((enemy.chasing || lured) ? 300 : 520);
     }
+    // Se va herido del forcejeo: va dejando gotas por los pasillos (poquito)
+    if (now < enemy.goteaHasta && now >= enemy.goteaAt) {
+      enemy.goteaAt = now + 260 + Math.random() * 340;
+      bloodDecals.push({ x: enemy.x + (Math.random() - 0.5) * 12, y: enemy.y + (Math.random() - 0.5) * 12, r: 1.6 + Math.random() * 2.2, rot: Math.random() * 6, gota: true });
+      if (bloodDecals.length > 110) bloodDecals.splice(0, bloodDecals.length - 110);
+    }
     enemy.trailT -= dt;
     if (enemy.trailT <= 0) { enemy.trail.push({ x: enemy.x, y: enemy.y, t: now }); if (enemy.trail.length > 26) enemy.trail.shift(); enemy.trailT = 10; }
 
@@ -1329,6 +1449,7 @@
     if (enemy.chasing && !player.hidden && !lured) fearPulse = Math.max(fearPulse, 0.45);
     if (fearPulse > 0.3 && !player.hidden) player.sanity = Math.max(0, player.sanity - diff.san * fearPulse * dtSec);
     else player.sanity = Math.min(100, player.sanity + (player.hidden ? 14 : 5) * dtSec);
+    if (player.hp < 100 && !enemy.chasing && dToP > 400) { player.hp = Math.min(100, player.hp + 2.2 * dtSec); updateVida(); }
     if (player.sanity < 35 && Math.random() < 0.01) noise(0.5, 0.05 + (35 - player.sanity) / 35 * 0.08, "bandpass", 1300);
     updateSan();
 
@@ -1356,8 +1477,9 @@
         } else if (Math.random() < 0.5) {                      // a veces se lo lleva a rastras hacia la oscuridad
           arrastrar(c, now);
         } else {                                               // y a veces cae ahí mismo
-          c.alive = false;
+          c.alive = false; c.capturado = true;
           enemy.fleeUntil = now + 2600; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;
+          enemy.goteaHasta = now + 26000; enemy.goteaAt = 0;        // se va herido del forcejeo
           player.sanity = Math.max(0, player.sanity - 22);
           flashMsg("¡Se llevó a " + c.name + "!");
         }
@@ -1365,7 +1487,19 @@
         break;
       }
     }
-    if (!player.hidden && dToP < PLAYER_R + 12) { lose(); return; }
+    if (!player.hidden && dToP < PLAYER_R + 12 && now >= player.golpeAt) {
+      player.hp = Math.max(0, Math.round(player.hp) - 50); player.golpeAt = now + 1100; player.dmgUntil = now + 320;
+      if (player.hp <= 0) { lose(); return; }
+      spawnBlood(player.x, player.y, 4); flashWhiteUntil = now + 60;
+      const ang = Math.atan2(player.y - enemy.y, player.x - enemy.x);     // te aparta de un golpe
+      const nx = player.x + Math.cos(ang) * 34, ny = player.y + Math.sin(ang) * 34;
+      if (!solidAt(nx, ny)) { player.x = nx; player.y = ny; }
+      player.stunUntil = now + 320; player.sanity = Math.max(0, player.sanity - 18);
+      enemy.fleeUntil = now + 1200; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;
+      growl(0.9, 0); noise(0.35, 0.26, "bandpass", 620, 0);
+      flashMsg("¡Te alcanzó! Vida " + player.hp + "%");
+      updateVida();
+    }
     elapsed = (now - startTime) / 1000;
   }
 
@@ -1553,7 +1687,21 @@
     }
 
     // Sangre (eventos)
-    for (const bd of bloodDecals) { ctx.save(); ctx.fillStyle = "rgba(110,12,16,0.5)"; ctx.beginPath(); ctx.ellipse(bd.x, bd.y, bd.r, bd.r * 0.7, bd.rot, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(70,6,10,0.5)"; ctx.beginPath(); ctx.arc(bd.x + bd.r * 0.7, bd.y + bd.r * 0.4, bd.r * 0.4, 0, 7); ctx.fill(); ctx.restore(); }
+    for (const sp of salpicaduras) {                                        // lo que quedó en la pared
+      ctx.save(); ctx.globalAlpha = 0.62;
+      ctx.fillStyle = sp.verde ? "rgba(92,168,48,0.85)" : "rgba(132,18,22,0.85)";
+      ctx.beginPath(); ctx.ellipse(sp.x, sp.y, sp.r, sp.r * 0.75, sp.rot, 0, 7); ctx.fill();
+      ctx.fillStyle = sp.verde ? "rgba(58,118,30,0.7)" : "rgba(86,10,14,0.7)";
+      ctx.beginPath(); ctx.arc(sp.x + sp.r * 0.5, sp.y + sp.r * 0.45, sp.r * 0.35, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+    for (const bd of bloodDecals) {
+      ctx.save();
+      if (bd.verde) { ctx.fillStyle = "rgba(78,150,40,0.55)"; ctx.beginPath(); ctx.ellipse(bd.x, bd.y, bd.r, bd.r * 0.72, bd.rot, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(48,104,26,0.5)"; ctx.beginPath(); ctx.arc(bd.x + bd.r * 0.6, bd.y + bd.r * 0.35, bd.r * 0.38, 0, 7); ctx.fill(); }
+      else if (bd.gota) { ctx.fillStyle = "rgba(96,8,12,0.62)"; ctx.beginPath(); ctx.ellipse(bd.x, bd.y, bd.r, bd.r * 0.82, bd.rot, 0, 7); ctx.fill(); }
+      else { ctx.fillStyle = "rgba(110,12,16,0.5)"; ctx.beginPath(); ctx.ellipse(bd.x, bd.y, bd.r, bd.r * 0.7, bd.rot, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(70,6,10,0.5)"; ctx.beginPath(); ctx.arc(bd.x + bd.r * 0.7, bd.y + bd.r * 0.4, bd.r * 0.4, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
 
     for (const f of enemy.trail) { const age = (now - f.t) / 4000; if (age >= 1) continue; ctx.fillStyle = "rgba(30,10,14," + (0.5 * (1 - age)).toFixed(3) + ")"; ctx.beginPath(); ctx.ellipse(f.x - 3, f.y, 2.6, 4, 0, 0, 7); ctx.ellipse(f.x + 3, f.y, 2.6, 4, 0, 0, 7); ctx.fill(); }
 
@@ -1577,6 +1725,8 @@
     for (const k of masterKeys) if (!k.taken) drawKey(k, t, true);
 
     drawEnemy(enemy.x, enemy.y, t);
+    if (preso) drawPreso(preso, now);
+    for (const m of minis) if (!m.muerto) drawMini(m, now);
     for (const c of compas) if (c.alive) drawCompa(c, now);
     drawPlayer();
     for (const b of bullets) drawBullet(b);
@@ -1681,6 +1831,34 @@
     const fx = x + Math.cos(player.face) * (PLAYER_R + 2), fy = y + Math.sin(player.face) * (PLAYER_R + 2);
     ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(fx, fy, 3.2, 0, 7); ctx.fill();
     if (player.light) { ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, 7); ctx.fill(); }
+  }
+  function drawMini(m, now) {
+    const x = m.x, y = m.y, pulso = m.activo ? 1 + Math.sin(now / 90) * 0.14 : 1;
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 6, MINI_R, MINI_R * 0.45, 0, 0, 7); ctx.fill();
+    ctx.save();
+    if (m.activo) { ctx.shadowColor = "rgba(120,220,60,0.8)"; ctx.shadowBlur = 12; }
+    ctx.fillStyle = m.activo ? "#4f7a24" : "#36491f";                      // bicho hinchado
+    ctx.beginPath(); ctx.ellipse(x, y, MINI_R * pulso, MINI_R * 0.92 * pulso, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = m.activo ? "#7fc43c" : "#51702c";
+    ctx.beginPath(); ctx.ellipse(x - 1, y - 2, MINI_R * 0.55 * pulso, MINI_R * 0.5 * pulso, 0, 0, 7); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = "rgba(25,35,15,0.9)"; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    for (let i = -1; i <= 1; i += 2) { ctx.beginPath(); ctx.moveTo(x + i * 4, y + 5); ctx.lineTo(x + i * 7, y + 11); ctx.stroke(); }
+    ctx.lineCap = "butt";
+    ctx.fillStyle = m.activo ? "#ffdd55" : "#9a6a2a";
+    ctx.beginPath(); ctx.arc(x + Math.cos(m.face) * 3 - 2.6, y + Math.sin(m.face) * 3 - 1.5, 1.5, 0, 7);
+    ctx.arc(x + Math.cos(m.face) * 3 + 2.6, y + Math.sin(m.face) * 3 - 1.5, 1.5, 0, 7); ctx.fill();
+  }
+  function drawPreso(p, now) {
+    const x = p.x, y = p.y, t = now / 420, c = p.compa;
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 7, 11, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2a2f36"; ctx.beginPath(); ctx.arc(x, y, PLAYER_R - 1, 0, 7); ctx.fill();   // encogido contra el suelo
+    ctx.fillStyle = c.dark; ctx.beginPath(); ctx.arc(x, y, PLAYER_R - 3.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(190,180,160,0.8)"; ctx.lineWidth = 1.6;        // atado
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(x - 10, y + i * 4); ctx.lineTo(x + 10, y + i * 4); ctx.stroke(); }
+    ctx.fillStyle = "rgba(255,210,120," + (0.5 + Math.sin(t) * 0.45).toFixed(2) + ")";
+    ctx.font = "9px Courier New"; ctx.textAlign = "center";
+    ctx.fillText(c.name, x, y - PLAYER_R - 6); ctx.textAlign = "left";
   }
   function drawCompa(c, now) {
     const x = c.x, y = c.y, r = PLAYER_R - 1.5;
@@ -1980,6 +2158,7 @@
     const seen = (gx, gy) => rastreo || (explored[gy] && explored[gy][gx]);   // las cámaras marcan objetivos aunque no conozcas el camino
     for (const k of keys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); if (!seen(gx, gy)) continue; ctx.fillStyle = "rgba(255,207,77," + (0.5 + Math.sin(t + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
     for (const k of masterKeys) if (!k.taken) { const gx = Math.floor(k.x / TILE), gy = Math.floor(k.y / TILE); if (!seen(gx, gy)) continue; ctx.fillStyle = "rgba(255,170,40," + (0.5 + Math.sin(t * 1.5 + gx) * 0.5) + ")"; ctx.fillRect(ox + gx * s - 1, oy + gy * s - 1, s + 2, s + 2); }
+    if (preso && seen(preso.gx, preso.gy)) { ctx.fillStyle = "rgba(255,200,90," + (0.5 + Math.sin(t * 1.6) * 0.5) + ")"; ctx.fillRect(ox + preso.gx * s - 1, oy + preso.gy * s - 1, s + 2, s + 2); }
     if (controlPanel && seen(controlPanel.gx, controlPanel.gy)) { ctx.fillStyle = "rgba(110,225,245," + (0.55 + Math.sin(t * 1.2) * 0.45) + ")"; ctx.fillRect(ox + controlPanel.gx * s - 1, oy + controlPanel.gy * s - 1, s + 2, s + 2); }
     if (seen(generator.gx, generator.gy)) { ctx.fillStyle = generator.on ? "#5ad45a" : "rgba(90,200,255," + (0.5 + Math.sin(t * 1.4) * 0.5) + ")"; ctx.fillRect(ox + generator.gx * s - 1, oy + generator.gy * s - 1, s + 2, s + 2); }
     const open = collected >= KEY_COUNT && generator.on; if (seen(door.gx, door.gy)) { ctx.fillStyle = open ? "#5ad45a" : "#b06a2a"; ctx.fillRect(ox + door.gx * s - 1, oy + door.gy * s - 1, s + 2, s + 2); }
@@ -2000,6 +2179,8 @@
   const elPrompt = document.getElementById("prompt"), elNote = document.getElementById("note");
   let msgTimer = null, noteTimer = null;
   function updateHud() { elKeyCount.textContent = collected; const _am = document.getElementById("ammoCount"), _cp = document.getElementById("compaCount"); _am.textContent = player.ammo; _am.style.color = player.ammo <= 2 ? "#e06a5a" : ""; const _v = compas.filter(c => c.alive).length; _cp.textContent = _v; _cp.style.color = _v < 3 ? "#e06a5a" : ""; document.getElementById("decoyCount").textContent = player.decoys; document.getElementById("radarCount").textContent = player.radars; document.getElementById("noteCount").textContent = notesFound; }
+  const elVida = document.getElementById("vidaFill");
+  function updateVida() { const v = Math.max(0, player.hp); elVida.style.width = v + "%"; elVida.style.background = v < 35 ? "linear-gradient(90deg,#8a1f1f,#e04a4a)" : v < 70 ? "linear-gradient(90deg,#8a5a1f,#f0a83c)" : "linear-gradient(90deg,#2f7a44,#5fd47a)"; }
   function updateBatt() { const b = Math.max(0, player.battery); elBatt.style.width = b + "%"; elBatt.style.background = !player.light ? "#3a4048" : b < 25 ? "linear-gradient(90deg,#a33,#e55)" : b < 55 ? "linear-gradient(90deg,#b8923f,#e0c060)" : "linear-gradient(90deg,#3fae5a,#8fe08a)"; }
   function updateSan() { const v = Math.max(0, player.sanity); elSan.style.width = v + "%"; elSan.style.background = v < 30 ? "linear-gradient(90deg,#7a2e8a,#c04bd0)" : "linear-gradient(90deg,#5a4a9a,#9a86d0)"; elStam.style.width = player.stamina + "%"; elStam.style.background = "linear-gradient(90deg,#8a6a2a,#d0b060)"; }
   const elAction = document.getElementById("actionBtn");
@@ -2011,7 +2192,8 @@
     if (modo !== accionModo) { accionModo = modo; elAction.classList.toggle("shootMode", modo === "disparo"); }
     elAction.innerHTML = ctx2 ? "ACCIÓN" : ("DISPARAR<br><b>" + player.ammo + "</b>");
   }
-  function updatePrompt() { updateActionBtn(); if (nearGen && !player.hidden) { elPrompt.innerHTML = "<b>E</b> activar generador"; elPrompt.classList.add("show"); }
+  function updatePrompt() { updateActionBtn(); if (nearPreso && !player.hidden) { elPrompt.innerHTML = "<b>E</b> rescatar a " + preso.compa.name; elPrompt.classList.add("show"); }
+    else if (nearGen && !player.hidden) { elPrompt.innerHTML = "<b>E</b> activar generador"; elPrompt.classList.add("show"); }
     else if (nearControl && !player.hidden) { const esp = Math.ceil((controlReadyAt - performance.now()) / 1000); elPrompt.innerHTML = esp > 0 ? "cámaras reiniciando… <b>" + esp + "s</b>" : "<b>E</b> ver las cámaras"; elPrompt.classList.add("show"); } else if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
   function flashMsg(txt) { elMsg.textContent = txt; elMsg.classList.add("show"); clearTimeout(msgTimer); msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1900); }
   function showNote(html) { elNote.innerHTML = "“" + html + "”"; elNote.classList.add("show"); clearTimeout(noteTimer); noteTimer = setTimeout(() => elNote.classList.remove("show"), 6500); }
@@ -2025,7 +2207,7 @@
   function refreshBest() { const b = bestTime(); document.getElementById("bestStart").textContent = b != null ? "Mejor tiempo (" + diff.label + "): " + fmt(b) : "Sin récord en " + diff.label + " todavía"; }
 
   // Partida guardada (recuerda en qué piso ibas)
-  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed, ammo: player.ammo, compas: compas.filter(c => c.alive).map(c => ({ n: c.name, b: Math.round(c.batt), v: Math.round(c.hp) })) })); } catch (e) {} }
+  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed, ammo: player.ammo, hp: player.hp, compas: compas.filter(c => c.alive || c.capturado).map(c => ({ n: c.name, b: Math.round(c.batt), v: Math.round(c.hp), k: !!c.capturado })) })); } catch (e) {} }
   function clearSave() { try { localStorage.removeItem("lospasillos_save"); } catch (e) {} }
   function getSave() { try { return JSON.parse(localStorage.getItem("lospasillos_save")); } catch (e) { return null; } }
   function refreshContinue() {
@@ -2128,13 +2310,13 @@
     document.querySelectorAll(".diffBtn").forEach(x => x.classList.toggle("selected", x.dataset.diff === diffName));
     floorIdx = s.floorIdx; notesFound = 0; notesPlaced = 0; newRecord = false; newAch = []; runSprinted = false; runChased = false;
     player.hasBoots = !!s.hasBoots; player.decoys = s.decoys || 0; player.radars = s.radars || 0;
-    player.ammo = s.ammo != null ? s.ammo : 10;
+    player.ammo = s.ammo != null ? s.ammo : 10; player.hp = s.hp != null ? s.hp : 100;
     // vuelven solo los compas que seguían vivos al guardar
     const guardados = (s.compas || []).map(c => typeof c === "string" ? { n: c, b: 100 } : c);   // compatible con partidas viejas
     compas = (s.compas ? COMPA_DEF.filter(d => guardados.some(g => g.n === d.name)) : COMPA_DEF).map(mkCompa);
-    for (const c of compas) { const g = guardados.find(g => g.n === c.name); if (g) { if (g.b != null) { c.batt = g.b; c.sinPila = g.b <= 0; } if (g.v != null) c.hp = g.v; } }
+    for (const c of compas) { const g = guardados.find(g => g.n === c.name); if (g) { if (g.b != null) { c.batt = g.b; c.sinPila = g.b <= 0; } if (g.v != null) c.hp = g.v; if (g.k) { c.alive = false; c.capturado = true; } } }
     buildFloor(false);
-    player.battery = s.battery != null ? s.battery : 100; player.sanity = s.sanity != null ? s.sanity : 100; updateBatt(); updateSan(); updateHud();
+    player.battery = s.battery != null ? s.battery : 100; player.sanity = s.sanity != null ? s.sanity : 100; updateBatt(); updateSan(); updateVida(); updateHud();
     startTime = performance.now() - (s.elapsed || 0) * 1000; elapsed = s.elapsed || 0;
     running = true; paused = false; last = performance.now();
     weather.raining = false; weather.intensity = 0;
