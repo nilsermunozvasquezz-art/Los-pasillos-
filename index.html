@@ -159,7 +159,7 @@
       <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
       <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico, se apagan con la tuya al pulsar F y <b>gastan pila igual que tú</b>: cada <b>pila</b> que recojas te da +45% y les reparte +30% a cada uno) y <b>disparan solos</b> si lo tienen a tiro. Tienen <span class="hi">barra de vida</span> encima: el monstruo los hiere (aguantan <b>2 zarpazos</b>) y al segundo se los lleva <span class="hi">en tu lugar</span>. Heridos cojean y apuntan peor; se recuperan solos si el monstruo anda lejos. El que cae <b>no vuelve</b>.</p>
-      <p>🎖️ <b>Trabajan como escuadrón:</b> cuando todo está tranquilo <span class="hi">uno se adelanta a revisar</span> un rincón cercano y vuelve a la formación. Si el monstruo ataca a uno, <span class="hi">los tres corren a ayudar</span>; cuando se aleja, todos regresan contigo. Y a veces no lo mata ahí: <span class="hi">se lo lleva a rastras a la oscuridad</span> y solo ves su linterna alejarse, dando tumbos, hasta que se apaga.</p>
+      <p>🎖️ <b>Trabajan como escuadrón:</b> cuando todo está tranquilo <span class="hi">uno se adelanta a revisar</span> un rincón cercano y vuelve a la formación, andando. Si uno <span class="hi">ve al monstruo y abre fuego</span>, o si el monstruo ataca a alguno, <span class="hi">los tres corren a ayudar</span>; cuando se aleja, todos regresan contigo. Y a veces no lo mata ahí: <span class="hi">se lo lleva a rastras a la oscuridad</span> y solo ves su linterna alejarse, dando tumbos, hasta que se apaga.</p>
       <p>🔫 <b>Disparar (Espacio / botón):</b> el monstruo <b>no muere</b>, pero retrocede unos segundos. El estruendo <span class="hi">le dice dónde estás</span>, así que no dispares por gusto. Busca <b>cajas de munición</b>.</p>
       <p>🎮 <b>El botón cambia solo:</b> normalmente pone <span class="hi">DISPARAR</span>; si tienes delante el generador, un armario o la consola pasa a <span class="hi">ACCIÓN</span> y no dispara, para que no gastes balas sin querer.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
@@ -1052,13 +1052,20 @@
 
       // ---- RECONOCIMIENTO: de uno en uno, se asoma a un rincón cercano y vuelve
       if (c.estado === "explorar") {
-        if (peligro || !c.destino || dp > 240) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }   // correa más corta: vuelve antes y sin carreras
-        else if (now >= c.estadoHasta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
+        if (peligro || !c.destino || dp > 240) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }   // con peligro sí aprieta
+        else if (now >= c.estadoHasta) { c.estado = "volver"; c.destino = null; c.path = []; c.repathT = 0; }
         else {
-          const falta = compaVa(c, c.destino.x, c.destino.y, 1.55 * cojera, dt);
+          const falta = compaVa(c, c.destino.x, c.destino.y, 1.0 * cojera, dt);        // va andando, sin prisa
           if (c.sinRuta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
           else if (falta < 26) { c.path = []; c.face = (c.fase * 3) + now / 420; if (c.estadoHasta > now + 1500) c.estadoHasta = now + 1500; }  // barre el rincón
         }
+      }
+
+      // ---- VOLVER: se reincorpora a la formación andando, sin carreras
+      if (c.estado === "volver") {
+        if (peligro || squadPos || player.sprinting || dp > 300) { c.estado = "seguir"; c.path = []; c.repathT = 0; }   // si hay lío o te largas, ya aprieta
+        else if (dp <= 46 + c.slot * 13) { c.estado = "seguir"; c.path = []; c.repathT = 0; }
+        else { compaVa(c, player.x, player.y, 1.0 * cojera, dt); c.face += (c.slot - 1) * 0.42; if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; } }
       }
 
       // ---- SEGUIR: la formación de siempre
@@ -1090,6 +1097,8 @@
         c.ammo--; c.shootAt = now + (herido ? 900 : 540) + Math.random() * 380; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
         fireBullet(c.x, c.y, c.face + (Math.random() - 0.5) * 0.16, c.name);
         gunshot(c.x, c.y, Math.max(-1, Math.min(1, (c.x - player.x) / 260)));
+        if (!squadPos) flashMsg(c.name + " lo tiene a la vista — ¡disparando!");
+        squadAlerta = now + 6000; squadPos = { x: c.x, y: c.y };               // el que lo ve llama a los demás
       }
       // 3) No se amontonan: si dos quedan pegados, se separan
       for (const o of compas) {
