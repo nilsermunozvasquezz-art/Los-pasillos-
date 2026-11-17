@@ -388,10 +388,11 @@
   ];
   let compas = [], bullets = [], ammoPickups = [];
   let squadAlerta = 0, squadPos = null, exploraAt = 0;   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
+  const PASO_MAX = 8;   // px que puede avanzar un compa en un frame (a 30 FPS son 240 px/s: más que tú esprintando)
   let explored = [], generator = { x: 0, y: 0, gx: 0, gy: 0, on: false }, nearGen = false, roomDoors = [], furniture = [], furnSet = new Set();
   let controlPanel = null, nearControl = false, controlReadyAt = 0;
   let door = { x: 0, y: 0, gx: 0, gy: 0 };
@@ -954,20 +955,23 @@
   // ------------------------------------------------------------- Compas y balas
   // Lleva al compa hacia un punto; devuelve lo que le falta
   function compaVa(c, tx, ty, mult, dt) {
+    // Arranca rapidito (para no descolgarse) pero frena suave (para que no parezca un salto)
+    c.mult += (mult - c.mult) * Math.min(1, dt / 60 * (mult > c.mult ? 7.5 : 3.5));
+    mult = c.mult;
     const gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
     c.repathT -= dt;
     if (c.repathT <= 0 || !c.path.length || gx !== c.pgx || gy !== c.pgy) {   // si el destino cambia de casilla, recalcula YA
       c.path = pathTo(c.x, c.y, gx, gy); c.repathT = 8; c.pgx = gx; c.pgy = gy;
     }
     if (!c.path.length) {                                   // sin ruta: tira en línea recta y avisa
-      const dx0 = tx - c.x, dy0 = ty - c.y, d0 = Math.hypot(dx0, dy0) || 1, sp0 = Math.min(PLAYER_SPEED * mult, d0) * dt;
+      const dx0 = tx - c.x, dy0 = ty - c.y, d0 = Math.hypot(dx0, dy0) || 1, sp0 = Math.min(PLAYER_SPEED * mult * dt, PASO_MAX, d0);
       if (!solidAt(c.x + dx0 / d0 * sp0, c.y + dy0 / d0 * sp0)) { c.x += dx0 / d0 * sp0; c.y += dy0 / d0 * sp0; c.face = Math.atan2(dy0, dx0); }
       else c.sinRuta = true;
       return d0;
     }
     c.sinRuta = false;
     const tg = c.path[0], dx = tg.x - c.x, dy = tg.y - c.y, d = Math.hypot(dx, dy) || 1;
-    const sp = Math.min(PLAYER_SPEED * mult, d) * dt;
+    const sp = Math.min(PLAYER_SPEED * mult * dt, PASO_MAX, d);   // tope por frame: con pocos FPS no pegan tirones
     const nx = c.x + dx / d * sp, ny = c.y + dy / d * sp;
     if (!solidAt(nx, ny)) { c.x = nx; c.y = ny; } else { c.path = []; c.repathT = 0; }
     if (d <= sp) c.path.shift();
@@ -980,7 +984,7 @@
     for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) {
       if (grid[y][x] !== 0 || furnSet.has(x + "," + y)) continue;
       const m = Math.abs(x - pgx) + Math.abs(y - pgy);
-      if (m >= 3 && m <= 6) op.push(cellCenter(x, y));
+      if (m >= 3 && m <= 5) op.push(cellCenter(x, y));
     }
     if (!op.length) return null;
     const d = op[(Math.random() * op.length) | 0];
@@ -1048,7 +1052,7 @@
 
       // ---- RECONOCIMIENTO: de uno en uno, se asoma a un rincón cercano y vuelve
       if (c.estado === "explorar") {
-        if (peligro || !c.destino || dp > 330) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
+        if (peligro || !c.destino || dp > 240) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }   // correa más corta: vuelve antes y sin carreras
         else if (now >= c.estadoHasta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
         else {
           const falta = compaVa(c, c.destino.x, c.destino.y, 1.55 * cojera, dt);
@@ -1063,7 +1067,9 @@
         if (dp > pegados + c.slot * 13) {
           // van a TU ritmo: si esprintas, esprintan; y si se han quedado atrás, aprietan
           const base = player.sprinting ? SPRINT_MULT : 1.04;
-          const alcance = dp > 240 ? 1.95 : dp > 170 ? 1.6 : dp > 110 ? 1.3 : 1.1;   // cuanto más atrás, más aprietan
+          // Andando no pasan de un trote (x1,45): si no, cruzan la pantalla y parece un salto
+          const tope = player.sprinting ? 1.95 : 1.45;
+          const alcance = Math.min(tope, dp > 240 ? 1.95 : dp > 170 ? 1.6 : dp > 110 ? 1.3 : 1.1);
           compaVa(c, player.x, player.y, base * alcance * cojera, dt); c.face += (c.slot - 1) * 0.42;
         }
         else {
