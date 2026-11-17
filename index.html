@@ -158,7 +158,7 @@
       <p>🎯 <b>Objetivo de cada piso:</b> ① junta las <span class="hi">5 llaves</span> · ② activa el <span class="hi">generador ⚡</span> (E) · ③ entra al <span class="hi">ascensor 🛗</span> y baja. El ascensor <b>solo abre con las 5 llaves y con energía</b>: su luz es roja si falta algo y verde cuando está listo. Al bajar del último piso escapas.</p>
       <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
-      <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico, se apagan con la tuya al pulsar F y <b>gastan pila igual que tú</b>: cada <b>pila</b> que recojas te da +45% y les reparte +30% a cada uno) y <b>disparan solos</b> si lo tienen a tiro. Si el monstruo llega hasta uno, <span class="hi">se lo lleva a él en tu lugar</span> — y ese compa no vuelve.</p>
+      <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico, se apagan con la tuya al pulsar F y <b>gastan pila igual que tú</b>: cada <b>pila</b> que recojas te da +45% y les reparte +30% a cada uno) y <b>disparan solos</b> si lo tienen a tiro. Tienen <span class="hi">barra de vida</span> encima: el monstruo los hiere (aguantan <b>2 zarpazos</b>) y al segundo se los lleva <span class="hi">en tu lugar</span>. Heridos cojean y apuntan peor; se recuperan solos si el monstruo anda lejos, y algo más al bajar de piso. El que cae <b>no vuelve</b>.</p>
       <p>🔫 <b>Disparar (Espacio / botón):</b> el monstruo <b>no muere</b>, pero retrocede unos segundos. El estruendo <span class="hi">le dice dónde estás</span>, así que no dispares por gusto. Busca <b>cajas de munición</b>.</p>
       <p>🎮 <b>El botón cambia solo:</b> normalmente pone <span class="hi">DISPARAR</span>; si tienes delante el generador, un armario o la consola pasa a <span class="hi">ACCIÓN</span> y no dispara, para que no gastes balas sin querer.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
@@ -384,7 +384,7 @@
     { name: "Checo", color: "#7f8fc0", dark: "#2f3650" },
   ];
   let compas = [], bullets = [], ammoPickups = [];
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -559,7 +559,7 @@
     enemy.fleeUntil = 0; enemy.hits = 0; enemy.hurtUntil = 0;
     if (fresh) compas = COMPA_DEF.map(mkCompa);   // los que murieron NO vuelven al bajar de piso
     const vivos = compas.filter(c => c.alive);
-    vivos.forEach((c, i) => { c.slot = i; c.ammo = COMPA_AMMO; c.path = []; c.repathT = 0; c.shootAt = 0; c.hurtUntil = 0; });   // la pila NO se recarga sola: se la llevan como está
+    vivos.forEach((c, i) => { c.slot = i; c.ammo = COMPA_AMMO; c.path = []; c.repathT = 0; c.shootAt = 0; c.hurtUntil = 0; c.golpeAt = 0; c.hp = Math.min(100, c.hp + 40); });   // se curan algo entre pisos; la pila NO se recarga sola
     // aparecen en casillas libres pegadas a ti (nunca dentro de un muro ni encima de un mueble)
     const cercaDeTi = cells.filter(([x, y]) => sd[y][x] >= 1 && sd[y][x] <= 4 && !furnSet.has(x + "," + y));
     cercaDeTi.sort((a, b) => sd[a[1]][a[0]] - sd[b[1]][b[0]]);
@@ -951,6 +951,9 @@
     const dtSec = dt / 60;
     for (const c of compas) {
       if (!c.alive) continue;
+      const herido = c.hp <= 50;
+      // Se recupera poco a poco si el monstruo no anda cerca (no hay botiquines)
+      if (c.hp < 100 && !enemy.chasing && dist(enemy.x, enemy.y, c.x, c.y) > 400) c.hp = Math.min(100, c.hp + 2.2 * dtSec);
       // Su linterna gasta pila al mismo ritmo que la tuya, y solo mientras está encendida
       if (player.light && c.batt > 0) {
         c.batt = Math.max(0, c.batt - diff.batt * dtSec);
@@ -964,7 +967,7 @@
         if (c.repathT <= 0 || !c.path.length) { c.path = pathTo(c.x, c.y, Math.floor(player.x / TILE), Math.floor(player.y / TILE)); c.repathT = 16; }
         if (c.path.length) {
           const tg = c.path[0], dx = tg.x - c.x, dy = tg.y - c.y, d = Math.hypot(dx, dy) || 1;
-          const sp = Math.min(PLAYER_SPEED * (dp > 190 ? 1.55 : 1.12), d) * dt;
+          const sp = Math.min(PLAYER_SPEED * (dp > 190 ? 1.55 : 1.12) * (herido ? 0.82 : 1), d) * dt;   // herido, cojea
           const nx = c.x + dx / d * sp, ny = c.y + dy / d * sp;
           if (!solidAt(nx, ny)) { c.x = nx; c.y = ny; } else { c.path = []; c.repathT = 0; }
           if (d <= sp) c.path.shift();
@@ -978,7 +981,7 @@
       const de = dist(c.x, c.y, enemy.x, enemy.y);
       if (c.ammo > 0 && de < 165 && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
         c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x);
-        c.ammo--; c.shootAt = now + 780 + Math.random() * 520; c.hurtUntil = now + 70;
+        c.ammo--; c.shootAt = now + (herido ? 1150 : 780) + Math.random() * 520; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
         fireBullet(c.x, c.y, c.face + (Math.random() - 0.5) * 0.16, c.name);
         gunshot(c.x, c.y, Math.max(-1, Math.min(1, (c.x - player.x) / 260)));
       }
@@ -1170,16 +1173,29 @@
     if (player.sanity < 35 && Math.random() < 0.01) noise(0.5, 0.05 + (35 - player.sanity) / 35 * 0.08, "bandpass", 1300);
     updateSan();
 
-    // Si un compa está más cerca, el monstruo se lo lleva a él: te salva la vida
+    // El monstruo embiste al compa que tenga más cerca: lo HIERE, y si lo deja sin vida se lo lleva
     if (now >= enemy.fleeUntil) {
       for (const c of compas) {
-        if (!c.alive || dist(enemy.x, enemy.y, c.x, c.y) >= 24) continue;
-        c.alive = false; spawnBlood(c.x, c.y, 9);
-        enemy.fleeUntil = now + 2600; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;   // se entretiene con él
+        if (!c.alive || dist(enemy.x, enemy.y, c.x, c.y) >= 24 || now < c.golpeAt) continue;
+        c.hp = Math.max(0, Math.round(c.hp) - 50); c.golpeAt = now + 900; c.dmgUntil = now + 260;   // redondeo: 2 zarpazos exactos, sin quedarse en 0,4 de vida
+        spawnBlood(c.x, c.y, c.hp > 0 ? 3 : 9);
         const pn = Math.max(-1, Math.min(1, (c.x - player.x) / 260));
-        growl(0.8, pn); noise(0.4, 0.26, "bandpass", 700, pn);
-        player.sanity = Math.max(0, player.sanity - 22);
-        flashMsg("¡Se llevó a " + c.name + "!"); updateHud();
+        growl(c.hp > 0 ? 0.6 : 0.8, pn); noise(c.hp > 0 ? 0.22 : 0.4, 0.24, "bandpass", 700, pn);
+        if (c.hp > 0) {                                        // sobrevive: lo aparta de un golpe y el monstruo se frena
+          const ang = Math.atan2(c.y - enemy.y, c.x - enemy.x);
+          const ex2 = c.x + Math.cos(ang) * 30, ey2 = c.y + Math.sin(ang) * 30;
+          if (!solidAt(ex2, ey2)) { c.x = ex2; c.y = ey2; }
+          c.path = []; c.repathT = 0;
+          enemy.fleeUntil = now + 1100; enemy.path = []; enemy.repathT = 0;
+          player.sanity = Math.max(0, player.sanity - 8);
+          flashMsg("¡Hirió a " + c.name + "! (" + c.hp + "%)");
+        } else {                                               // cae
+          c.alive = false;
+          enemy.fleeUntil = now + 2600; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;
+          player.sanity = Math.max(0, player.sanity - 22);
+          flashMsg("¡Se llevó a " + c.name + "!");
+        }
+        updateHud();
         break;
       }
     }
@@ -1502,20 +1518,26 @@
   function drawCompa(c, now) {
     const x = c.x, y = c.y, r = PLAYER_R - 1.5;
     ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 7, 10, 4.5, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = c.dark; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-    ctx.fillStyle = c.color; ctx.beginPath(); ctx.arc(x, y, r - 3.5, 0, 7); ctx.fill();
+    const sangra = now < c.dmgUntil;
+    ctx.fillStyle = sangra ? "#7a1e1e" : c.dark; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = sangra ? "#d85a4a" : c.color; ctx.beginPath(); ctx.arc(x, y, r - 3.5, 0, 7); ctx.fill();
     const gx = x + Math.cos(c.face) * (r + 5), gy = y + Math.sin(c.face) * (r + 5);   // el cañón del arma
     ctx.strokeStyle = "#1b1f25"; ctx.lineWidth = 3; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(x + Math.cos(c.face) * r, y + Math.sin(c.face) * r); ctx.lineTo(gx, gy); ctx.stroke(); ctx.lineCap = "butt";
-    if (player.light && c.batt > 0) { ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.7, 0, 7); ctx.fill(); }   // su linterna encendida
+    if (player.light && c.batt > 0) {                                        // su linterna: el color avisa de la pila
+      const pb = c.batt / 100;
+      ctx.fillStyle = pb < 0.25 ? "#c08a3a" : pb < 0.55 ? "#f0d888" : "#ffe9a8";
+      ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.3 + pb * 0.6, 0, 7); ctx.fill();
+    }
     if (now < c.hurtUntil) { ctx.fillStyle = "rgba(255,226,150,0.95)"; ctx.beginPath(); ctx.arc(gx, gy, 4.5, 0, 7); ctx.fill(); }   // fogonazo
     const ny = y - r - 5 - c.slot * 9;
-    ctx.fillStyle = c.batt <= 0 ? "rgba(224,106,90,0.85)" : "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
+    ctx.fillStyle = c.hp <= 50 ? "rgba(224,106,90,0.9)" : "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
     ctx.fillText(c.name, x, ny); ctx.textAlign = "left";                      // escalonados: no se pisan al ir juntos
-    const bw = 16, bb = Math.max(0, c.batt) / 100;                            // barrita de su pila
-    ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - bw / 2 - 1, ny - 7, bw + 2, 4);
-    ctx.fillStyle = bb <= 0 ? "rgba(90,96,104,0.9)" : bb < 0.25 ? "#e05555" : bb < 0.55 ? "#e0c060" : "#5fbf72";
-    ctx.fillRect(x - bw / 2, ny - 6, Math.max(bb > 0 ? 1 : 0, bw * bb), 2);
+    const bw = 20, vb = Math.max(0, c.hp) / 100, by = ny - 8;                 // BARRA DE VIDA
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(x - bw / 2 - 1, by, bw + 2, 5);
+    ctx.fillStyle = "rgba(120,128,140,0.45)"; ctx.fillRect(x - bw / 2, by + 1, bw, 3);          // lo que le falta
+    ctx.fillStyle = vb < 0.3 ? "#ff4a4a" : vb < 0.6 ? "#f0a83c" : "#5fd47a";
+    ctx.fillRect(x - bw / 2, by + 1, Math.max(vb > 0 ? 2 : 0, bw * vb), 3);                     // lo que le queda
   }
   function drawBullet(b) {
     ctx.save(); ctx.strokeStyle = "rgba(255,232,170,0.9)"; ctx.lineWidth = 2; ctx.lineCap = "round";
@@ -1836,7 +1858,7 @@
   function refreshBest() { const b = bestTime(); document.getElementById("bestStart").textContent = b != null ? "Mejor tiempo (" + diff.label + "): " + fmt(b) : "Sin récord en " + diff.label + " todavía"; }
 
   // Partida guardada (recuerda en qué piso ibas)
-  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed, ammo: player.ammo, compas: compas.filter(c => c.alive).map(c => ({ n: c.name, b: Math.round(c.batt) })) })); } catch (e) {} }
+  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed, ammo: player.ammo, compas: compas.filter(c => c.alive).map(c => ({ n: c.name, b: Math.round(c.batt), v: Math.round(c.hp) })) })); } catch (e) {} }
   function clearSave() { try { localStorage.removeItem("lospasillos_save"); } catch (e) {} }
   function getSave() { try { return JSON.parse(localStorage.getItem("lospasillos_save")); } catch (e) { return null; } }
   function refreshContinue() {
@@ -1943,7 +1965,7 @@
     // vuelven solo los compas que seguían vivos al guardar
     const guardados = (s.compas || []).map(c => typeof c === "string" ? { n: c, b: 100 } : c);   // compatible con partidas viejas
     compas = (s.compas ? COMPA_DEF.filter(d => guardados.some(g => g.n === d.name)) : COMPA_DEF).map(mkCompa);
-    for (const c of compas) { const g = guardados.find(g => g.n === c.name); if (g && g.b != null) { c.batt = g.b; c.sinPila = g.b <= 0; } }
+    for (const c of compas) { const g = guardados.find(g => g.n === c.name); if (g) { if (g.b != null) { c.batt = g.b; c.sinPila = g.b <= 0; } if (g.v != null) c.hp = g.v; } }
     buildFloor(false);
     player.battery = s.battery != null ? s.battery : 100; player.sanity = s.sanity != null ? s.sanity : 100; updateBatt(); updateSan(); updateHud();
     startTime = performance.now() - (s.elapsed || 0) * 1000; elapsed = s.elapsed || 0;
