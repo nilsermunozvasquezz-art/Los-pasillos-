@@ -388,7 +388,7 @@
   ];
   let compas = [], bullets = [], ammoPickups = [];
   let squadAlerta = 0, squadPos = null, exploraAt = 0;   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -954,9 +954,18 @@
   // ------------------------------------------------------------- Compas y balas
   // Lleva al compa hacia un punto; devuelve lo que le falta
   function compaVa(c, tx, ty, mult, dt) {
+    const gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
     c.repathT -= dt;
-    if (c.repathT <= 0 || !c.path.length) { c.path = pathTo(c.x, c.y, Math.floor(tx / TILE), Math.floor(ty / TILE)); c.repathT = 16; }
-    if (!c.path.length) return dist(c.x, c.y, tx, ty);
+    if (c.repathT <= 0 || !c.path.length || gx !== c.pgx || gy !== c.pgy) {   // si el destino cambia de casilla, recalcula YA
+      c.path = pathTo(c.x, c.y, gx, gy); c.repathT = 8; c.pgx = gx; c.pgy = gy;
+    }
+    if (!c.path.length) {                                   // sin ruta: tira en línea recta y avisa
+      const dx0 = tx - c.x, dy0 = ty - c.y, d0 = Math.hypot(dx0, dy0) || 1, sp0 = Math.min(PLAYER_SPEED * mult, d0) * dt;
+      if (!solidAt(c.x + dx0 / d0 * sp0, c.y + dy0 / d0 * sp0)) { c.x += dx0 / d0 * sp0; c.y += dy0 / d0 * sp0; c.face = Math.atan2(dy0, dx0); }
+      else c.sinRuta = true;
+      return d0;
+    }
+    c.sinRuta = false;
     const tg = c.path[0], dx = tg.x - c.x, dy = tg.y - c.y, d = Math.hypot(dx, dy) || 1;
     const sp = Math.min(PLAYER_SPEED * mult, d) * dt;
     const nx = c.x + dx / d * sp, ny = c.y + dy / d * sp;
@@ -1031,8 +1040,9 @@
       if (c.estado === "auxilio") {
         if (!squadPos || dp > 420) { c.estado = "seguir"; c.path = []; c.repathT = 0; }   // se acabó, o te estás quedando solo
         else {
-          const falta = compaVa(c, squadPos.x, squadPos.y, 1.65 * cojera, dt);
+          const falta = compaVa(c, squadPos.x, squadPos.y, 2.05 * cojera, dt);
           if (falta < 54) { c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x); c.path = []; }   // ya está ahí: encara al monstruo
+          else if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; }              // no hay manera de llegar: no se queda plantado
         }
       }
 
@@ -1041,14 +1051,21 @@
         if (peligro || !c.destino || dp > 330) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
         else if (now >= c.estadoHasta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
         else {
-          const falta = compaVa(c, c.destino.x, c.destino.y, 1.3 * cojera, dt);
-          if (falta < 26) { c.path = []; c.face = (c.fase * 3) + now / 420; if (c.estadoHasta > now + 1500) c.estadoHasta = now + 1500; }  // barre el rincón
+          const falta = compaVa(c, c.destino.x, c.destino.y, 1.55 * cojera, dt);
+          if (c.sinRuta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
+          else if (falta < 26) { c.path = []; c.face = (c.fase * 3) + now / 420; if (c.estadoHasta > now + 1500) c.estadoHasta = now + 1500; }  // barre el rincón
         }
       }
 
       // ---- SEGUIR: la formación de siempre
       if (c.estado === "seguir") {
-        if (dp > 64 + c.slot * 16) { compaVa(c, player.x, player.y, (dp > 190 ? 1.55 : 1.12) * cojera, dt); c.face += (c.slot - 1) * 0.42; }
+        const pegados = enemy.chasing ? 34 : 46;                                   // con el monstruo encima se cierran contigo
+        if (dp > pegados + c.slot * 13) {
+          // van a TU ritmo: si esprintas, esprintan; y si se han quedado atrás, aprietan
+          const base = player.sprinting ? SPRINT_MULT : 1.04;
+          const alcance = dp > 240 ? 1.95 : dp > 170 ? 1.6 : dp > 110 ? 1.3 : 1.1;   // cuanto más atrás, más aprietan
+          compaVa(c, player.x, player.y, base * alcance * cojera, dt); c.face += (c.slot - 1) * 0.42;
+        }
         else {
           c.path = [];
           c.face = player.face + (c.slot - 1) * 1.15 + Math.sin(now / 950 + c.fase) * 0.5;   // en abanico: izquierda, frente y derecha
@@ -1062,9 +1079,9 @@
       }
       // 2) Si el monstruo está a tiro y lo ven, disparan solos
       const de = dist(c.x, c.y, enemy.x, enemy.y);
-      if (c.ammo > 0 && de < 165 && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
+      if (c.ammo > 0 && de < 190 && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
         c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x);
-        c.ammo--; c.shootAt = now + (herido ? 1150 : 780) + Math.random() * 520; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
+        c.ammo--; c.shootAt = now + (herido ? 900 : 540) + Math.random() * 380; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
         fireBullet(c.x, c.y, c.face + (Math.random() - 0.5) * 0.16, c.name);
         gunshot(c.x, c.y, Math.max(-1, Math.min(1, (c.x - player.x) / 260)));
       }
@@ -1125,6 +1142,7 @@
     const sprintInput = pressed.sprint || gp.sprint || (Math.hypot(touch.dx, touch.dy) > 0.9);
 
     let sprinting = false;
+    player.sprinting = false;
     if (!player.hidden && !stunned) {
       const mag = Math.hypot(ix, iy); if (mag > 1) { ix /= mag; iy /= mag; }
       player.vx = ix; player.vy = iy;
@@ -1132,6 +1150,7 @@
       sprinting = player.hasBoots && sprintInput && player.stamina > 1 && mag > 0.1;
       if (sprinting) { player.stamina = Math.max(0, player.stamina - 32 * dtSec); runSprinted = true; }
       else player.stamina = Math.min(100, player.stamina + 15 * dtSec);
+      player.sprinting = sprinting;
       const sp = PLAYER_SPEED * (sprinting ? SPRINT_MULT : 1) * dt;
       tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
     } else { player.vx = 0; player.vy = 0; player.stamina = Math.min(100, player.stamina + 20 * dtSec); }
