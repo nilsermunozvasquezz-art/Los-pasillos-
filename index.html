@@ -158,7 +158,7 @@
       <p>🎯 <b>Objetivo de cada piso:</b> ① junta las <span class="hi">5 llaves</span> · ② activa el <span class="hi">generador ⚡</span> (E) · ③ entra al <span class="hi">ascensor 🛗</span> y baja. El ascensor <b>solo abre con las 5 llaves y con energía</b>: su luz es roja si falta algo y verde cuando está listo. Al bajar del último piso escapas.</p>
       <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
-      <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico y barren el pasillo; se apagan con la tuya al pulsar F) y <b>disparan solos</b> si lo tienen a tiro. Si el monstruo llega hasta uno, <span class="hi">se lo lleva a él en tu lugar</span> — y ese compa no vuelve.</p>
+      <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico, se apagan con la tuya al pulsar F y <b>gastan pila igual que tú</b>: cada <b>pila</b> que recojas te da +45% y les reparte +30% a cada uno) y <b>disparan solos</b> si lo tienen a tiro. Si el monstruo llega hasta uno, <span class="hi">se lo lleva a él en tu lugar</span> — y ese compa no vuelve.</p>
       <p>🔫 <b>Disparar (Espacio / botón):</b> el monstruo <b>no muere</b>, pero retrocede unos segundos. El estruendo <span class="hi">le dice dónde estás</span>, así que no dispares por gusto. Busca <b>cajas de munición</b>.</p>
       <p>🎮 <b>El botón cambia solo:</b> normalmente pone <span class="hi">DISPARAR</span>; si tienes delante el generador, un armario o la consola pasa a <span class="hi">ACCIÓN</span> y no dispara, para que no gastes balas sin querer.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
@@ -384,7 +384,7 @@
     { name: "Checo", color: "#7f8fc0", dark: "#2f3650" },
   ];
   let compas = [], bullets = [], ammoPickups = [];
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28 });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -559,7 +559,7 @@
     enemy.fleeUntil = 0; enemy.hits = 0; enemy.hurtUntil = 0;
     if (fresh) compas = COMPA_DEF.map(mkCompa);   // los que murieron NO vuelven al bajar de piso
     const vivos = compas.filter(c => c.alive);
-    vivos.forEach((c, i) => { c.slot = i; c.ammo = COMPA_AMMO; c.path = []; c.repathT = 0; c.shootAt = 0; c.hurtUntil = 0; });
+    vivos.forEach((c, i) => { c.slot = i; c.ammo = COMPA_AMMO; c.path = []; c.repathT = 0; c.shootAt = 0; c.hurtUntil = 0; });   // la pila NO se recarga sola: se la llevan como está
     // aparecen en casillas libres pegadas a ti (nunca dentro de un muro ni encima de un mueble)
     const cercaDeTi = cells.filter(([x, y]) => sd[y][x] >= 1 && sd[y][x] <= 4 && !furnSet.has(x + "," + y));
     cercaDeTi.sort((a, b) => sd[a[1]][a[0]] - sd[b[1]][b[0]]);
@@ -948,8 +948,14 @@
 
   // ------------------------------------------------------------- Compas y balas
   function updateCompas(dt, now) {
+    const dtSec = dt / 60;
     for (const c of compas) {
       if (!c.alive) continue;
+      // Su linterna gasta pila al mismo ritmo que la tuya, y solo mientras está encendida
+      if (player.light && c.batt > 0) {
+        c.batt = Math.max(0, c.batt - diff.batt * dtSec);
+        if (c.batt <= 0 && !c.sinPila) { c.sinPila = true; flashMsg("A " + c.name + " se le acabó la pila"); beep(170, 0.1, "square", 0.1); }
+      }
       const dp = dist(c.x, c.y, player.x, player.y);
       // 1) Seguirte: se pegan a ti, pero sin amontonarse encima
       const lejos = dp > 64 + c.slot * 16;
@@ -1092,7 +1098,11 @@
     if (!player.hidden) {
       for (const k of keys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 10) { k.taken = true; collected = Math.min(KEY_COUNT, collected + 1); updateHud(); beep(880, 0.1, "triangle", 0.2); setTimeout(() => beep(1320, 0.12, "triangle", 0.2), 90); flashMsg(collected >= KEY_COUNT ? "¡Las 5 llaves! Ve a la puerta." : "Llave (" + collected + "/5)"); }
       for (const k of masterKeys) if (!k.taken && dist(player.x, player.y, k.x, k.y) < PLAYER_R + 11) { k.taken = true; collected = Math.min(KEY_COUNT, collected + 2); updateHud(); beep(700, 0.1, "triangle", 0.22); setTimeout(() => beep(1050, 0.1, "triangle", 0.22), 80); setTimeout(() => beep(1400, 0.14, "triangle", 0.22), 160); flashMsg("¡LLAVE MAESTRA! (+2) → " + collected + "/5"); }
-      for (const b of batteries) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 10) { b.taken = true; player.battery = Math.min(100, player.battery + 45); beep(520, 0.08, "square", 0.18); setTimeout(() => beep(760, 0.1, "square", 0.18), 70); flashMsg("Pila (+linterna)"); updateBatt(); }
+      for (const b of batteries) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 10) { b.taken = true; player.battery = Math.min(100, player.battery + 45);
+        const vivos = compas.filter(c => c.alive);
+        for (const c of vivos) { c.batt = Math.min(100, c.batt + 30); c.sinPila = false; }   // repartes con los compas
+        beep(520, 0.08, "square", 0.18); setTimeout(() => beep(760, 0.1, "square", 0.18), 70);
+        flashMsg(vivos.length ? "Pila: +45% tuya y +30% a cada compa" : "Pila (+linterna)"); updateBatt(); }
       for (const b of boots) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 11) { b.taken = true; player.hasBoots = true; document.getElementById("stamWrap").style.display = "flex"; beep(300, 0.1, "square", 0.18); setTimeout(() => beep(450, 0.12, "square", 0.18), 80); flashMsg("¡Botas! Mantén Shift para correr"); }
       for (const dp of decoyPickups) if (!dp.taken && dist(player.x, player.y, dp.x, dp.y) < PLAYER_R + 11) { dp.taken = true; player.decoys += 2; beep(640, 0.09, "square", 0.16); flashMsg("Señuelos +2 (Q para lanzar)"); updateHud(); }
       for (const rd of radars) if (!rd.taken && dist(player.x, player.y, rd.x, rd.y) < PLAYER_R + 11) { rd.taken = true; player.radars++; beep(900, 0.08, "sine", 0.16); flashMsg("Radar +1 (R para ver al monstruo)"); updateHud(); }
@@ -1449,12 +1459,14 @@
       const h = mctx.createRadialGradient(sx, sy, 0, sx, sy, halo);
       h.addColorStop(0, "rgba(220,220,210,0.6)"); h.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = h; mctx.beginPath(); mctx.arc(sx, sy, halo, 0, 7); mctx.fill();
-      if (player.light && compaCono > 1) {                    // apagan la suya cuando apagas la tuya
+      const cb = c.batt / 100;
+      const miCono = compaCono * (0.4 + 0.6 * cb);           // cuanta menos pila, menos alcance
+      if (player.light && c.batt > 0 && miCono > 1) {        // sin pila (o con la tuya apagada) se queda a oscuras
         mctx.save();
-        mctx.beginPath(); mctx.moveTo(sx, sy); mctx.arc(sx, sy, compaCono, c.face - compaHalf, c.face + compaHalf); mctx.closePath(); mctx.clip();
-        const gc = mctx.createRadialGradient(sx, sy, halo * 0.5, sx, sy, compaCono);
-        gc.addColorStop(0, "rgba(250,243,220,0.92)"); gc.addColorStop(0.55, "rgba(228,218,185,0.6)"); gc.addColorStop(1, "rgba(0,0,0,0)");
-        mctx.fillStyle = gc; mctx.fillRect(sx - compaCono, sy - compaCono, compaCono * 2, compaCono * 2);
+        mctx.beginPath(); mctx.moveTo(sx, sy); mctx.arc(sx, sy, miCono, c.face - compaHalf, c.face + compaHalf); mctx.closePath(); mctx.clip();
+        const gc = mctx.createRadialGradient(sx, sy, halo * 0.5, sx, sy, miCono);
+        gc.addColorStop(0, "rgba(250,243,220," + (0.55 + 0.37 * cb).toFixed(3) + ")"); gc.addColorStop(0.55, "rgba(228,218,185,0.6)"); gc.addColorStop(1, "rgba(0,0,0,0)");
+        mctx.fillStyle = gc; mctx.fillRect(sx - miCono, sy - miCono, miCono * 2, miCono * 2);
         mctx.restore();
       }
       if (now < c.hurtUntil) { const f = mctx.createRadialGradient(sx, sy, 0, sx, sy, 130); f.addColorStop(0, "rgba(255,240,200,0.9)"); f.addColorStop(1, "rgba(0,0,0,0)"); mctx.fillStyle = f; mctx.beginPath(); mctx.arc(sx, sy, 130, 0, 7); mctx.fill(); }
@@ -1493,10 +1505,15 @@
     const gx = x + Math.cos(c.face) * (r + 5), gy = y + Math.sin(c.face) * (r + 5);   // el cañón del arma
     ctx.strokeStyle = "#1b1f25"; ctx.lineWidth = 3; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(x + Math.cos(c.face) * r, y + Math.sin(c.face) * r); ctx.lineTo(gx, gy); ctx.stroke(); ctx.lineCap = "butt";
-    if (player.light) { ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.7, 0, 7); ctx.fill(); }   // su linterna encendida
+    if (player.light && c.batt > 0) { ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.7, 0, 7); ctx.fill(); }   // su linterna encendida
     if (now < c.hurtUntil) { ctx.fillStyle = "rgba(255,226,150,0.95)"; ctx.beginPath(); ctx.arc(gx, gy, 4.5, 0, 7); ctx.fill(); }   // fogonazo
-    ctx.fillStyle = "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
-    ctx.fillText(c.name, x, y - r - 5 - c.slot * 9); ctx.textAlign = "left";   // escalonados: no se pisan al ir juntos
+    const ny = y - r - 5 - c.slot * 9;
+    ctx.fillStyle = c.batt <= 0 ? "rgba(224,106,90,0.85)" : "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
+    ctx.fillText(c.name, x, ny); ctx.textAlign = "left";                      // escalonados: no se pisan al ir juntos
+    const bw = 16, bb = Math.max(0, c.batt) / 100;                            // barrita de su pila
+    ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - bw / 2 - 1, ny - 7, bw + 2, 4);
+    ctx.fillStyle = bb <= 0 ? "rgba(90,96,104,0.9)" : bb < 0.25 ? "#e05555" : bb < 0.55 ? "#e0c060" : "#5fbf72";
+    ctx.fillRect(x - bw / 2, ny - 6, Math.max(bb > 0 ? 1 : 0, bw * bb), 2);
   }
   function drawBullet(b) {
     ctx.save(); ctx.strokeStyle = "rgba(255,232,170,0.9)"; ctx.lineWidth = 2; ctx.lineCap = "round";
@@ -1817,7 +1834,7 @@
   function refreshBest() { const b = bestTime(); document.getElementById("bestStart").textContent = b != null ? "Mejor tiempo (" + diff.label + "): " + fmt(b) : "Sin récord en " + diff.label + " todavía"; }
 
   // Partida guardada (recuerda en qué piso ibas)
-  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed, ammo: player.ammo, compas: compas.filter(c => c.alive).map(c => c.name) })); } catch (e) {} }
+  function saveRun() { try { localStorage.setItem("lospasillos_save", JSON.stringify({ floorIdx, diffName, battery: player.battery, hasBoots: player.hasBoots, decoys: player.decoys, radars: player.radars, sanity: player.sanity, elapsed, ammo: player.ammo, compas: compas.filter(c => c.alive).map(c => ({ n: c.name, b: Math.round(c.batt) })) })); } catch (e) {} }
   function clearSave() { try { localStorage.removeItem("lospasillos_save"); } catch (e) {} }
   function getSave() { try { return JSON.parse(localStorage.getItem("lospasillos_save")); } catch (e) { return null; } }
   function refreshContinue() {
@@ -1922,7 +1939,9 @@
     player.hasBoots = !!s.hasBoots; player.decoys = s.decoys || 0; player.radars = s.radars || 0;
     player.ammo = s.ammo != null ? s.ammo : 10;
     // vuelven solo los compas que seguían vivos al guardar
-    compas = (s.compas ? COMPA_DEF.filter(d => s.compas.indexOf(d.name) >= 0) : COMPA_DEF).map(mkCompa);
+    const guardados = (s.compas || []).map(c => typeof c === "string" ? { n: c, b: 100 } : c);   // compatible con partidas viejas
+    compas = (s.compas ? COMPA_DEF.filter(d => guardados.some(g => g.n === d.name)) : COMPA_DEF).map(mkCompa);
+    for (const c of compas) { const g = guardados.find(g => g.n === c.name); if (g && g.b != null) { c.batt = g.b; c.sinPila = g.b <= 0; } }
     buildFloor(false);
     player.battery = s.battery != null ? s.battery : 100; player.sanity = s.sanity != null ? s.sanity : 100; updateBatt(); updateSan(); updateHud();
     startTime = performance.now() - (s.elapsed || 0) * 1000; elapsed = s.elapsed || 0;

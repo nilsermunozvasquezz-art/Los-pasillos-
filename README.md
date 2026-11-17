@@ -17,7 +17,7 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 
 - Varios **pisos** temáticos (El Complejo, La Biblioteca, La Enfermería) con habitaciones y un monstruo por piso
 - **3 compas** (Nico, Rulo y Checo) que te siguen y disparan solos; si el monstruo llega hasta uno **se lo lleva en tu lugar**, y no vuelve en los pisos siguientes
-- Cada compa lleva **su propia linterna** con cono direccional: se abren en abanico (izquierda, frente y derecha) y barren el pasillo. Se apagan y encienden **con la tuya (F)**, para que apagar la luz siga sirviendo para esconderse
+- Cada compa lleva **su propia linterna** con cono direccional: se abren en abanico (izquierda, frente y derecha) y barren el pasillo. Se apagan y encienden **con la tuya (F)**, para que apagar la luz siga sirviendo para esconderse, y **gastan pila al mismo ritmo que la tuya**: el cono se les acorta y a 0 se quedan a oscuras. Cada **pila** recogida te da +45% y reparte +30% a cada compa
 - **Arma de fuego** con munición limitada: los disparos hacen retroceder al monstruo (no lo matan) pero el estruendo **delata tu posición**; cajas de munición repartidas por el piso
 - **Botón contextual**: pone DISPARAR normalmente y cambia a ACCIÓN (sin disparar) al tener delante el generador, un armario o la consola
 - **Habitaciones con puertas automáticas** que se abren al acercarte
