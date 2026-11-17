@@ -286,10 +286,12 @@
   const mask = document.createElement("canvas");
   const mctx = mask.getContext("2d");
   let VIEW_W = 760, VIEW_H = 540;
+  const MQ = 0.5;   // la luz es difusa: a media resolución se ve igual y cuesta 4 veces menos
   function resize() {
     VIEW_W = Math.min(window.innerWidth, 920);
     VIEW_H = Math.min(window.innerHeight, 680);
-    canvas.width = VIEW_W; canvas.height = VIEW_H; mask.width = VIEW_W; mask.height = VIEW_H;
+    canvas.width = VIEW_W; canvas.height = VIEW_H;
+    mask.width = Math.max(1, Math.round(VIEW_W * MQ)); mask.height = Math.max(1, Math.round(VIEW_H * MQ));
   }
   window.addEventListener("resize", resize); resize();
 
@@ -1536,6 +1538,7 @@
     const hideVision = BASE_VISION * 0.82 * flick * br;
     const ambR = AMBIENT_R * br;
 
+    mctx.setTransform(MQ, 0, 0, MQ, 0, 0);          // así el resto del código sigue usando coordenadas de pantalla
     mctx.globalCompositeOperation = "source-over"; mctx.fillStyle = "#000"; mctx.fillRect(0, 0, VIEW_W, VIEW_H);
     mctx.globalCompositeOperation = "lighter";
     const ha = mctx.createRadialGradient(cx, cy, 0, cx, cy, ambR); ha.addColorStop(0, "rgba(120,120,130,0.85)"); ha.addColorStop(1, "rgba(0,0,0,0)");
@@ -1587,7 +1590,7 @@
       g.addColorStop(1, "rgba(0,0,0,0)");
       mctx.fillStyle = g; mctx.beginPath(); mctx.arc(sx, sy, R, 0, 7); mctx.fill();
     }
-    ctx.globalCompositeOperation = "multiply"; ctx.drawImage(mask, 0, 0); ctx.globalCompositeOperation = "source-over";
+    ctx.globalCompositeOperation = "multiply"; ctx.drawImage(mask, 0, 0, VIEW_W, VIEW_H); ctx.globalCompositeOperation = "source-over";
   }
 
   function drawPlayer() {
