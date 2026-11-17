@@ -1079,8 +1079,10 @@
 
     // Puertas automáticas: se abren solas al acercarte (o al acercarse el monstruo)
     for (const rd of roomDoors) {
-      const cerca = dist(player.x, player.y, rd.x, rd.y) < 58 || dist(enemy.x, enemy.y, rd.x, rd.y) < 58;
-      if (cerca && !rd.wasNear) { rd.wasNear = true; noise(0.32, 0.06, "lowpass", 420); }
+      // Se abre para quien sea: tú, el monstruo Y tus compas (antes la atravesaban cerrada)
+      let cerca = dist(player.x, player.y, rd.x, rd.y) < 58 || dist(enemy.x, enemy.y, rd.x, rd.y) < 58;
+      if (!cerca) for (const c of compas) if (c.alive && dist(c.x, c.y, rd.x, rd.y) < 58) { cerca = true; break; }
+      if (cerca && !rd.wasNear) { rd.wasNear = true; noise(0.32, 0.06, "lowpass", 420, Math.max(-1, Math.min(1, (rd.x - player.x) / 260))); }
       if (!cerca) rd.wasNear = false;
       rd.open += ((cerca ? 1 : 0) - rd.open) * Math.min(1, dtSec * 8);
     }

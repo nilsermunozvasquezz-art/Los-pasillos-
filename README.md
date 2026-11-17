@@ -20,7 +20,7 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - Cada compa lleva **su propia linterna** con cono direccional: se abren en abanico (izquierda, frente y derecha) y barren el pasillo. Se apagan y encienden **con la tuya (F)**, para que apagar la luz siga sirviendo para esconderse, y **gastan pila al mismo ritmo que la tuya**: el cono se les acorta y a 0 se quedan a oscuras. Cada **pila** recogida te da +45% y reparte +30% a cada compa
 - **Arma de fuego** con munición limitada: los disparos hacen retroceder al monstruo (no lo matan) pero el estruendo **delata tu posición**; cajas de munición repartidas por el piso
 - **Botón contextual**: pone DISPARAR normalmente y cambia a ACCIÓN (sin disparar) al tener delante el generador, un armario o la consola
-- **Habitaciones con puertas automáticas** que se abren al acercarte
+- **Habitaciones con puertas automáticas** que se abren al acercarte tú, tus compas o el monstruo
 - **Sala de control** en una esquina de cada piso: su consola de **cámaras** marca en el minimapa dónde están las llaves que faltan, el generador y el ascensor (20 s) y localiza al monstruo (8 s). Reutilizable cada 25 s — no dibuja los pasillos, solo los objetivos
 - **Ascensor** para bajar de piso, con cinemática dentro de la cabina
 - **Mobiliario** según el escenario: cajas en el complejo, mesas en la biblioteca, camillas en la enfermería
