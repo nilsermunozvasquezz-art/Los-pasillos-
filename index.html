@@ -159,7 +159,7 @@
       <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
       <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico, se apagan con la tuya al pulsar F y <b>gastan pila igual que tú</b>: cada <b>pila</b> que recojas te da +45% y les reparte +30% a cada uno) y <b>disparan solos</b> si lo tienen a tiro. Tienen <span class="hi">barra de vida</span> encima: el monstruo los hiere (aguantan <b>2 zarpazos</b>) y al segundo se los lleva <span class="hi">en tu lugar</span>. Heridos cojean y apuntan peor; se recuperan solos si el monstruo anda lejos. El que cae <b>no vuelve</b>.</p>
-      <p>🎖️ <b>Trabajan como escuadrón:</b> cuando todo está tranquilo <span class="hi">uno se adelanta a revisar</span> un rincón cercano y vuelve a la formación, andando. Si uno <span class="hi">ve al monstruo y abre fuego</span>, o si el monstruo ataca a alguno, <span class="hi">los tres corren a ayudar</span>; cuando se aleja, todos regresan contigo. Y a veces no lo mata ahí: <span class="hi">se lo lleva a rastras a la oscuridad</span> y solo ves su linterna alejarse, dando tumbos, hasta que se apaga.</p>
+      <p>🎖️ <b>Trabajan como escuadrón:</b> cuando todo está tranquilo <span class="hi">uno se adelanta a revisar</span> un rincón cercano y vuelve a la formación, andando. Si uno <span class="hi">ve al monstruo y abre fuego</span>, o si el monstruo ataca a alguno, <span class="hi">los tres corren a ayudar</span>; cuando se aleja, todos regresan contigo. De vez en cuando el monstruo <span class="hi">se olvida de ti y va a por uno de ellos</span> (te avisa en pantalla): corre a cubrirlo. Y a veces no lo mata ahí: <span class="hi">se lo lleva a rastras a la oscuridad</span> y solo ves su linterna alejarse, dando tumbos, hasta que se apaga.</p>
       <p>🔫 <b>Disparar (Espacio / botón):</b> el monstruo <b>no muere</b>, pero retrocede unos segundos. El estruendo <span class="hi">le dice dónde estás</span>, así que no dispares por gusto. Busca <b>cajas de munición</b>.</p>
       <p>🎮 <b>El botón cambia solo:</b> normalmente pone <span class="hi">DISPARAR</span>; si tienes delante el generador, un armario o la consola pasa a <span class="hi">ACCIÓN</span> y no dispara, para que no gastes balas sin querer.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
@@ -379,7 +379,7 @@
 
   // ---------------------------------------------------------------- Estado
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0, ammo: 10, shootAt: 0, flashUntil: 0 };
-  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0, fleeUntil: 0, hits: 0, hurtUntil: 0 };
+  const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0, fleeUntil: 0, hits: 0, hurtUntil: 0, objetivo: null, objetivoHasta: 0 };
   // Los 3 compas: te siguen, llevan su propia arma y pueden morir en tu lugar
   const COMPA_DEF = [
     { name: "Nico",  color: "#6fae7a", dark: "#2f4a35" },
@@ -387,7 +387,7 @@
     { name: "Checo", color: "#7f8fc0", dark: "#2f3650" },
   ];
   let compas = [], bullets = [], ammoPickups = [];
-  let squadAlerta = 0, squadPos = null, exploraAt = 0;   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
+  let squadAlerta = 0, squadPos = null, exploraAt = 0, embestidaAt = 0, zarpazoCompaAt = 0;   // embestidas y descanso entre zarpazos a compas   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
   const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
@@ -562,6 +562,7 @@
     // ---- Los compas: en una partida nueva son 3; al bajar de piso solo siguen los que sobrevivieron
     bullets = []; player.shootAt = 0; player.flashUntil = 0;
     squadAlerta = 0; squadPos = null; exploraAt = performance.now() + 9000;
+    enemy.objetivo = null; enemy.objetivoHasta = 0; embestidaAt = performance.now() + 35000 + Math.random() * 25000; zarpazoCompaAt = 0;
     enemy.fleeUntil = 0; enemy.hits = 0; enemy.hurtUntil = 0;
     if (fresh) compas = COMPA_DEF.map(mkCompa);   // los que murieron NO vuelven al bajar de piso
     const vivos = compas.filter(c => c.alive);
@@ -948,6 +949,7 @@
       if (best) { tx = best[0]; ty = best[1]; } else { tx = ex; ty = ey; }
     }
     else if (now < enemy.lureUntil && enemy.lurePos) { tx = Math.floor(enemy.lurePos.x / TILE); ty = Math.floor(enemy.lurePos.y / TILE); }
+    else if (enemy.objetivo && enemy.objetivo.alive && now < enemy.objetivoHasta) { tx = Math.floor(enemy.objetivo.x / TILE); ty = Math.floor(enemy.objetivo.y / TILE); }
     else if (enemy.chasing || now < enemy.alertUntil) { tx = Math.floor(player.x / TILE); ty = Math.floor(player.y / TILE); }
     else if (now < enemy.searchUntil && enemy.lastSeen) { tx = Math.floor(enemy.lastSeen.x / TILE); ty = Math.floor(enemy.lastSeen.y / TILE); }
     else {
@@ -1160,7 +1162,8 @@
         if (isWall(b.x, b.y)) { b.life = 0; noise(0.05, 0.1, "highpass", 2200, Math.max(-1, Math.min(1, (b.x - player.x) / 260))); break; }
         if (dist(b.x, b.y, enemy.x, enemy.y) < 15) {
           b.life = 0; enemy.hits++; enemy.hurtUntil = now + 220;
-          enemy.fleeUntil = now + 1700 + Math.min(1400, enemy.hits * 160);       // retrocede, pero NO muere
+          const embiste = !!enemy.objetivo && now < enemy.objetivoHasta;
+          enemy.fleeUntil = now + (embiste ? 550 : 1700 + Math.min(1400, enemy.hits * 160));   // embistiendo aguanta más
           enemy.chasing = false; enemy.lureUntil = 0; enemy.path = []; enemy.repathT = 0;
           spawnBlood(enemy.x, enemy.y, 3);
           const pn = Math.max(-1, Math.min(1, (enemy.x - player.x) / 260));
@@ -1276,7 +1279,21 @@
     // Solo te persigue si DE VERDAD te ve: dentro del alcance y sin pared en medio
     const sees = !player.hidden && dToP < sight && hasLineOfSight(enemy.x, enemy.y, player.x, player.y);
     if (sees) { enemy.lastSeen = { x: player.x, y: player.y }; enemy.searchUntil = now + 2000; } // recuerda 2s dónde te vio
-    enemy.chasing = (lured || sees || alerted) && now >= enemy.fleeUntil;   // herido deja de perseguir y se larga
+    // De vez en cuando (no a cada rato) el monstruo se olvida de ti y va a por un compa
+    if (enemy.objetivo && (!enemy.objetivo.alive || now >= enemy.objetivoHasta)) enemy.objetivo = null;
+    if (!enemy.objetivo && now >= embestidaAt && now >= enemy.fleeUntil && (enemy.chasing || alerted)) {
+      const cand = compas.filter(c => c.alive && c.estado !== "arrastrado" && dist(enemy.x, enemy.y, c.x, c.y) < 430);
+      if (cand.length) {
+        const v = cand[(Math.random() * cand.length) | 0];
+        enemy.objetivo = v; enemy.objetivoHasta = now + 7000; enemy.repathT = 0;
+        embestidaAt = now + 55000 + Math.random() * 40000;                      // y no vuelve a intentarlo en ~1-1,5 min
+        const pn = Math.max(-1, Math.min(1, (v.x - player.x) / 300));
+        growl(0.8, pn); flashMsg("¡VA A POR " + v.name.toUpperCase() + "!");
+        player.sanity = Math.max(0, player.sanity - 5);
+      } else embestidaAt = now + 6000;                                          // ninguno a tiro: reintenta pronto
+    }
+    const embistiendo = !!enemy.objetivo;
+    enemy.chasing = (lured || sees || alerted || embistiendo) && now >= enemy.fleeUntil;   // herido deja de perseguir y se larga
     if (enemy.chasing && !player.hidden && !lured) runChased = true;
     enemy.repathT -= dt;
     if (enemy.repathT <= 0 || (enemy.chasing && !wasChasing) || enemy.path.length === 0) { enemyRepath(); enemy.repathT = (enemy.chasing || lured || now < enemy.fleeUntil) ? 22 : 70; }
@@ -1315,15 +1332,19 @@
     if (player.sanity < 35 && Math.random() < 0.01) noise(0.5, 0.05 + (35 - player.sanity) / 35 * 0.08, "bandpass", 1300);
     updateSan();
 
-    // El monstruo embiste al compa que tenga más cerca: lo HIERE, y si lo deja sin vida se lo lleva
-    if (now >= enemy.fleeUntil) {
+    // El monstruo embiste al compa que tenga más cerca: lo HIERE, y si lo deja sin vida se lo lleva.
+    // Solo de vez en cuando: si acaba de zarandear a uno, pasa un rato antes de volver a tocar a nadie
+    // (salvo que vaya expresamente a por alguien, que entonces sí remata).
+    if (now >= enemy.fleeUntil && (now >= zarpazoCompaAt || !!enemy.objetivo)) {
       for (const c of compas) {
         if (!c.alive || c.estado === "arrastrado" || dist(enemy.x, enemy.y, c.x, c.y) >= 24 || now < c.golpeAt) continue;
         c.hp = Math.max(0, Math.round(c.hp) - 50); c.golpeAt = now + 900; c.dmgUntil = now + 260;   // redondeo: 2 zarpazos exactos, sin quedarse en 0,4 de vida
+        zarpazoCompaAt = now + 11000 + Math.random() * 7000;                                           // descanso antes del siguiente
         spawnBlood(c.x, c.y, c.hp > 0 ? 3 : 9);
         const pn = Math.max(-1, Math.min(1, (c.x - player.x) / 260));
         growl(c.hp > 0 ? 0.6 : 0.8, pn); noise(c.hp > 0 ? 0.22 : 0.4, 0.24, "bandpass", 700, pn);
         squadAlerta = now + 6000; squadPos = { x: c.x, y: c.y };               // ¡todos para allá!
+        if (enemy.objetivo === c) { enemy.objetivo = null; enemy.objetivoHasta = 0; }   // ya consiguió lo que buscaba
         if (c.hp > 0) {                                        // sobrevive: lo aparta de un golpe y el monstruo se frena
           const ang = Math.atan2(c.y - enemy.y, c.x - enemy.x);
           const ex2 = c.x + Math.cos(ang) * 30, ey2 = c.y + Math.sin(ang) * 30;
