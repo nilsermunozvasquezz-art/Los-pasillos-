@@ -388,7 +388,7 @@
   ];
   let compas = [], bullets = [], ammoPickups = [];
   let squadAlerta = 0, squadPos = null, exploraAt = 0;   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -911,7 +911,9 @@
       const [x, y] = q[h++]; if (x === tx && y === ty) break;
       for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
         const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && dm[ny][nx] === -1 && !furnSet.has(nx + "," + ny)) { dm[ny][nx] = dm[y][x] + 1; prev[ny][nx] = [x, y]; q.push([nx, ny]); }
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || grid[ny][nx] !== 0 || dm[ny][nx] !== -1) continue;
+        dm[ny][nx] = dm[y][x] + 1; prev[ny][nx] = [x, y];
+        if (!furnSet.has(nx + "," + ny)) q.push([nx, ny]);   // a una casilla con mueble se LLEGA, pero no se usa de pasillo
       }
     }
     const path = [];
@@ -925,7 +927,15 @@
     const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
     const dmap = Array.from({ length: ROWS }, () => Array(COLS).fill(-1));
     dmap[ey][ex] = 0; const q = [[ex, ey]]; let h = 0;
-    while (h < q.length) { const [x, y] = q[h++]; for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < COLS && ny < ROWS && grid[ny][nx] === 0 && dmap[ny][nx] === -1 && !furnSet.has(nx + "," + ny)) { dmap[ny][nx] = dmap[y][x] + 1; prev[ny][nx] = [x, y]; q.push([nx, ny]); } } }
+    while (h < q.length) {
+      const [x, y] = q[h++];
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || grid[ny][nx] !== 0 || dmap[ny][nx] !== -1) continue;
+        dmap[ny][nx] = dmap[y][x] + 1; prev[ny][nx] = [x, y];
+        if (!furnSet.has(nx + "," + ny)) q.push([nx, ny]);   // igual que los compas: se llega, pero no se atraviesa
+      }
+    }
     let tx, ty;
     if (now < enemy.fleeUntil) {
       // Herido: se aleja de ti todo lo que puede sin salirse de lo alcanzable
@@ -1007,6 +1017,8 @@
     const dEnemyP = dist(enemy.x, enemy.y, player.x, player.y);
     const peligro = enemy.chasing || dEnemyP < 230;
     if (now >= squadAlerta) squadPos = null;                                      // se alejó: todos vuelven contigo
+    // Si el monstruo va a por TI, el aviso eres tú: vienen a cubrirte a toda prisa
+    if (enemy.chasing && !player.hidden && now >= enemy.fleeUntil) { squadPos = { x: player.x, y: player.y }; squadAlerta = Math.max(squadAlerta, now + 1800); }
 
     for (const c of compas) {
       if (!c.alive) continue;
@@ -1058,6 +1070,19 @@
           const falta = compaVa(c, c.destino.x, c.destino.y, 1.0 * cojera, dt);        // va andando, sin prisa
           if (c.sinRuta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
           else if (falta < 26) { c.path = []; c.face = (c.fase * 3) + now / 420; if (c.estadoHasta > now + 1500) c.estadoHasta = now + 1500; }  // barre el rincón
+        }
+      }
+
+      // ---- Vigilante: si lleva un rato sin poder llegar a ningún sitio, se reincorpora a tu lado
+      if (c.sinRuta) { if (!c.sinRutaDesde) c.sinRutaDesde = now; }
+      else c.sinRutaDesde = 0;
+      if (c.sinRutaDesde && now - c.sinRutaDesde > 2500) {
+        c.sinRutaDesde = 0; c.sinRuta = false; c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0;
+        const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [1, -1], [-1, 1]];
+        for (let k = 0; k < dirs.length; k++) {
+          const d = dirs[(k + c.slot * 3) % dirs.length], tx = player.x + d[0] * TILE, ty = player.y + d[1] * TILE;
+          if (solidAt(tx, ty) || compas.some(o => o !== c && o.alive && dist(o.x, o.y, tx, ty) < 20)) continue;
+          c.x = tx; c.y = ty; break;
         }
       }
 
