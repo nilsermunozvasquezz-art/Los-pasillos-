@@ -9,12 +9,16 @@ en cada uno reúne las **5 llaves** y cruza la **puerta**, mientras algo te caza
 Abre `index.html` en cualquier navegador (no requiere instalación).
 
 - **Mover:** WASD / flechas (joystick en móvil, o control/gamepad 🎮)
-- **Shift:** correr · **F:** linterna · **E:** esconderte / activar generador · **Q:** señuelo · **R:** radar · **P:** pausa
+- **Espacio / botón:** disparar (o ACCIÓN si tienes algo delante) · **E:** acción
+- **Shift:** correr · **F:** linterna · **Q:** señuelo · **R:** radar · **P:** pausa
 - **Objetivo de cada piso:** ① junta las **5 llaves** · ② activa el **generador** (E) · ③ entra al **ascensor** y baja. El ascensor solo abre con las 5 llaves **y** con energía (su luz pasa de roja a verde). Al bajar del último piso escapas.
 
 ## Características
 
 - Varios **pisos** temáticos (El Complejo, La Biblioteca, La Enfermería) con habitaciones y un monstruo por piso
+- **3 compas** (Nico, Rulo y Checo) que te siguen, alumbran y disparan solos; si el monstruo llega hasta uno **se lo lleva en tu lugar**, y no vuelve en los pisos siguientes
+- **Arma de fuego** con munición limitada: los disparos hacen retroceder al monstruo (no lo matan) pero el estruendo **delata tu posición**; cajas de munición repartidas por el piso
+- **Botón contextual**: pone DISPARAR normalmente y cambia a ACCIÓN (sin disparar) al tener delante el generador, un armario o la consola
 - **Habitaciones con puertas automáticas** que se abren al acercarte
 - **Sala de control** en una esquina de cada piso: su consola de **cámaras** marca en el minimapa dónde están las llaves que faltan, el generador y el ascensor (20 s) y localiza al monstruo (8 s). Reutilizable cada 25 s — no dibuja los pasillos, solo los objetivos
 - **Ascensor** para bajar de piso, con cinemática dentro de la cabina
