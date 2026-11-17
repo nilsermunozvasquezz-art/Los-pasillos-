@@ -158,7 +158,7 @@
       <p>🎯 <b>Objetivo de cada piso:</b> ① junta las <span class="hi">5 llaves</span> · ② activa el <span class="hi">generador ⚡</span> (E) · ③ entra al <span class="hi">ascensor 🛗</span> y baja. El ascensor <b>solo abre con las 5 llaves y con energía</b>: su luz es roja si falta algo y verde cuando está listo. Al bajar del último piso escapas.</p>
       <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
-      <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen, alumbran y <b>disparan solos</b> si lo tienen a tiro. Si el monstruo llega hasta uno, <span class="hi">se lo lleva a él en tu lugar</span> — y ese compa no vuelve.</p>
+      <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico y barren el pasillo; se apagan con la tuya al pulsar F) y <b>disparan solos</b> si lo tienen a tiro. Si el monstruo llega hasta uno, <span class="hi">se lo lleva a él en tu lugar</span> — y ese compa no vuelve.</p>
       <p>🔫 <b>Disparar (Espacio / botón):</b> el monstruo <b>no muere</b>, pero retrocede unos segundos. El estruendo <span class="hi">le dice dónde estás</span>, así que no dispares por gusto. Busca <b>cajas de munición</b>.</p>
       <p>🎮 <b>El botón cambia solo:</b> normalmente pone <span class="hi">DISPARAR</span>; si tienes delante el generador, un armario o la consola pasa a <span class="hi">ACCIÓN</span> y no dispara, para que no gastes balas sin querer.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
@@ -384,7 +384,7 @@
     { name: "Checo", color: "#7f8fc0", dark: "#2f3650" },
   ];
   let compas = [], bullets = [], ammoPickups = [];
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0 });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -646,8 +646,9 @@
   function toggleLight() {
     player.light = !player.light;
     beep(player.light ? 320 : 150, 0.06, "square", 0.12);
-    if (player.light) flashMsg("Linterna encendida — la luz lo atrae");
-    else flashMsg(enemy.chasing ? "Luz apagada… piérdelo en la oscuridad" : "Linterna apagada — te ocultas");
+    const sq = compas.filter(c => c.alive).length ? " (y los compas)" : "";
+    if (player.light) flashMsg("Linterna encendida" + sq + " — la luz lo atrae");
+    else flashMsg(enemy.chasing ? "Luz apagada" + sq + "… piérdelo en la oscuridad" : "Linterna apagada" + sq + " — te ocultas");
     updateBatt();
   }
   function interact() {
@@ -961,9 +962,12 @@
           const nx = c.x + dx / d * sp, ny = c.y + dy / d * sp;
           if (!solidAt(nx, ny)) { c.x = nx; c.y = ny; } else { c.path = []; c.repathT = 0; }
           if (d <= sp) c.path.shift();
-          c.face = Math.atan2(dy, dx);
+          c.face = Math.atan2(dy, dx) + (c.slot - 1) * 0.42;
         }
-      } else { c.path = []; }
+      } else {
+        c.path = [];
+        c.face = player.face + (c.slot - 1) * 1.15 + Math.sin(now / 950 + c.fase) * 0.5;   // en abanico: cubren izquierda, frente y derecha
+      }
       // 2) Si el monstruo está a tiro y lo ven, disparan solos
       const de = dist(c.x, c.y, enemy.x, enemy.y);
       if (c.ammo > 0 && de < 165 && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
@@ -975,8 +979,9 @@
       // 3) No se amontonan: si dos quedan pegados, se separan
       for (const o of compas) {
         if (o === c || !o.alive) continue;
-        const ox = c.x - o.x, oy = c.y - o.y, od = Math.hypot(ox, oy);
-        if (od < 27 && od > 0.01) {
+        let ox = c.x - o.x, oy = c.y - o.y, od = Math.hypot(ox, oy);
+        if (od < 0.01) { const ar = Math.random() * 6.28; ox = Math.cos(ar); oy = Math.sin(ar); od = 1; }  // superpuestos: se separan igual
+        if (od < 27) {
           const emp = (27 - od) * 0.5, ux = ox / od * emp, uy = oy / od * emp;
           if (!solidAt(c.x + ux, c.y + uy)) { c.x += ux; c.y += uy; }
           if (!solidAt(o.x - ux, o.y - uy)) { o.x -= ux; o.y -= uy; }
@@ -984,11 +989,16 @@
       }
       // 4) Red de seguridad: si quedara atrapado o se perdiera, reaparece A TU LADO (no encima)
       if (isWall(c.x, c.y) || dp > TILE * 14) {
-        let col = { x: player.x, y: player.y };
-        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1]]) {
-          const tx = player.x + dx * TILE, ty = player.y + dy * TILE;
-          if (!solidAt(tx, ty)) { col = { x: tx, y: ty }; break; }
+        const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [1, -1], [-1, 1]];
+        let col = null;
+        for (let k = 0; k < dirs.length && !col; k++) {
+          const d = dirs[(k + c.slot * 3) % dirs.length];                      // cada compa empieza por otra dirección
+          const tx = player.x + d[0] * TILE, ty = player.y + d[1] * TILE;
+          if (solidAt(tx, ty)) continue;
+          if (compas.some(o => o !== c && o.alive && dist(o.x, o.y, tx, ty) < 20)) continue;   // y nunca donde ya hay otro
+          col = { x: tx, y: ty };
         }
+        if (!col) col = { x: player.x + (c.slot - 1) * 10, y: player.y + 8 };
         c.x = col.x; c.y = col.y; c.path = []; c.repathT = 0;
       }
     }
@@ -1429,14 +1439,24 @@
       mctx.fillStyle = gc; mctx.fillRect(cx - coneVision, cy - coneVision, coneVision * 2, coneVision * 2); mctx.restore();
     }
     const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
-    // Cada compa lleva su propia lamparita
+    // Cada compa lleva SU linterna: mismo cono que la tuya, algo más corto
+    const compaCono = BASE_VISION * 1.02 * flick * br * (1 - fearPulse * 0.12);
+    const compaHalf = CONE_HALF * 0.92;
     for (const c of compas) {
       if (!c.alive) continue;
       const sx = c.x - camX + shx, sy = c.y - camY + shy;
-      const R = 56 * br;
-      const g = mctx.createRadialGradient(sx, sy, 0, sx, sy, R);
-      g.addColorStop(0, "rgba(225,225,215,0.6)"); g.addColorStop(0.5, "rgba(180,185,175,0.22)"); g.addColorStop(1, "rgba(0,0,0,0)");
-      mctx.fillStyle = g; mctx.beginPath(); mctx.arc(sx, sy, R, 0, 7); mctx.fill();
+      const halo = 46 * br;                                   // lo que alumbra a sus pies
+      const h = mctx.createRadialGradient(sx, sy, 0, sx, sy, halo);
+      h.addColorStop(0, "rgba(220,220,210,0.6)"); h.addColorStop(1, "rgba(0,0,0,0)");
+      mctx.fillStyle = h; mctx.beginPath(); mctx.arc(sx, sy, halo, 0, 7); mctx.fill();
+      if (player.light && compaCono > 1) {                    // apagan la suya cuando apagas la tuya
+        mctx.save();
+        mctx.beginPath(); mctx.moveTo(sx, sy); mctx.arc(sx, sy, compaCono, c.face - compaHalf, c.face + compaHalf); mctx.closePath(); mctx.clip();
+        const gc = mctx.createRadialGradient(sx, sy, halo * 0.5, sx, sy, compaCono);
+        gc.addColorStop(0, "rgba(250,243,220,0.92)"); gc.addColorStop(0.55, "rgba(228,218,185,0.6)"); gc.addColorStop(1, "rgba(0,0,0,0)");
+        mctx.fillStyle = gc; mctx.fillRect(sx - compaCono, sy - compaCono, compaCono * 2, compaCono * 2);
+        mctx.restore();
+      }
       if (now < c.hurtUntil) { const f = mctx.createRadialGradient(sx, sy, 0, sx, sy, 130); f.addColorStop(0, "rgba(255,240,200,0.9)"); f.addColorStop(1, "rgba(0,0,0,0)"); mctx.fillStyle = f; mctx.beginPath(); mctx.arc(sx, sy, 130, 0, 7); mctx.fill(); }
     }
     // Fogonazo de tu disparo
@@ -1473,6 +1493,7 @@
     const gx = x + Math.cos(c.face) * (r + 5), gy = y + Math.sin(c.face) * (r + 5);   // el cañón del arma
     ctx.strokeStyle = "#1b1f25"; ctx.lineWidth = 3; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(x + Math.cos(c.face) * r, y + Math.sin(c.face) * r); ctx.lineTo(gx, gy); ctx.stroke(); ctx.lineCap = "butt";
+    if (player.light) { ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.7, 0, 7); ctx.fill(); }   // su linterna encendida
     if (now < c.hurtUntil) { ctx.fillStyle = "rgba(255,226,150,0.95)"; ctx.beginPath(); ctx.arc(gx, gy, 4.5, 0, 7); ctx.fill(); }   // fogonazo
     ctx.fillStyle = "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
     ctx.fillText(c.name, x, y - r - 5 - c.slot * 9); ctx.textAlign = "left";   // escalonados: no se pisan al ir juntos
