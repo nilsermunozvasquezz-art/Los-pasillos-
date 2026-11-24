@@ -598,7 +598,7 @@
     }
 
     // ---- Los compas: en una partida nueva son 3; al bajar de piso solo siguen los que sobrevivieron
-    bullets = []; player.shootAt = 0; player.flashUntil = 0;
+    bullets = []; player.shootAt = 0; player.flashUntil = 0; ondas = []; gotera = 0;
     squadAlerta = 0; squadPos = null; exploraAt = performance.now() + 9000;
     escuadraModo = "conmigo"; esperaPos = null; caido = null; nearCaido = false;
     if (fresh || !stats) stats = nuevasStats(); else stats.pisos++;
@@ -927,7 +927,14 @@
     if (musicGain) musicGain.gain.setTargetAtTime(settings.music * (1 + Math.min(0.5, fearPulse * 0.5)), actx.currentTime, 1.0);
     musicTimer = setTimeout(musicLoop, 4500);
   }
+  function chapoteo(vol, pan) {                       // pisada en el agua
+    if (!actx) return;
+    noise(0.1, vol * 0.9, "bandpass", 1600, pan);
+    setTimeout(() => noise(0.16, vol * 0.5, "lowpass", 620, pan), 25);
+    setTimeout(() => noise(0.1, vol * 0.22, "highpass", 2600, pan), 55);
+  }
   function footstep(run) {
+    if (evento.id === "inundado") { chapoteo(run ? 0.17 : 0.12, 0); return; }
     if (!actx) return; const t = actx.currentTime;
     const o = actx.createOscillator(), g = actx.createGain();
     o.type = "sine"; o.frequency.setValueAtTime(run ? 200 : 155, t); o.frequency.exponentialRampToValueAtTime(run ? 72 : 55, t + 0.09);
@@ -1295,6 +1302,14 @@
         if (!squadPos) { flashMsg(c.name + " lo tiene a la vista — ¡disparando!"); dice(c, c.rol === "miedoso" ? "¡Ahí está! ¡ayuda!" : "¡Lo tengo!", true); }
         squadAlerta = now + 6000; squadPos = { x: c.x, y: c.y };               // el que lo ve llama a los demás
       }
+      // Chapoteo de los compas al andar
+      if (evento.id === "inundado") {
+        const movido = Math.hypot(c.x - (c.ux != null ? c.ux : c.x), c.y - (c.uy != null ? c.uy : c.y));
+        c.andado = (c.andado || 0) + movido; c.ux = c.x; c.uy = c.y;
+        if (c.andado > 30) { c.andado = 0; salpica(c.x, c.y + 5, 4, 0.75);
+          if (dist(c.x, c.y, player.x, player.y) < 330) chapoteo(0.05, Math.max(-1, Math.min(1, (c.x - player.x) / 300))); }
+      }
+
       // Giro suave: antes pegaban saltos de 90° en un frame y parecía que temblaban
       let dgir = c.faceObj - c.face; dgir = Math.atan2(Math.sin(dgir), Math.cos(dgir));
       c.face += dgir * Math.min(1, dt / 60 * 9);
@@ -1434,7 +1449,7 @@
     } else { player.vx = 0; player.vy = 0; player.stamina = Math.min(100, player.stamina + 20 * dtSec); }
 
     const moving = (player.vx * player.vx + player.vy * player.vy) > 0.02 && !player.hidden && !stunned;
-    if (moving) { if (now >= player.stepAt) { footstep(sprinting); player.stepAt = now + (sprinting ? 250 : 400); } }
+    if (moving) { if (now >= player.stepAt) { footstep(sprinting); salpica(player.x, player.y + 6, 5, sprinting ? 1.35 : 1); player.stepAt = now + (sprinting ? 250 : 400); } }
     else player.stepAt = 0;
 
     if (player.light && !player.hidden && player.battery > 0) player.battery = Math.max(0, player.battery - diff.batt * dtSec);
@@ -1507,6 +1522,16 @@
       }
     }
 
+    // Goteras del techo
+    if (evento.id === "inundado" && now >= gotera) {
+      gotera = now + 1400 + Math.random() * 3200;
+      const ag = Math.random() * 6.28, rg = 60 + Math.random() * 220;
+      const gx2 = player.x + Math.cos(ag) * rg, gy2 = player.y + Math.sin(ag) * rg;
+      if (!isWall(gx2, gy2)) {
+        salpica(gx2, gy2, 2, 0.5);
+        noise(0.05, 0.05 + Math.random() * 0.04, "bandpass", 2000 + Math.random() * 900, Math.max(-1, Math.min(1, (gx2 - player.x) / 300)));
+      }
+    }
     decoysActive = decoysActive.filter(d => d.until > now);
 
     updateCompas(dt, now);
@@ -1556,11 +1581,12 @@
       enemy.x = bx; enemy.y = by; enemy.path = []; enemy.repathT = 0;
     }
     // Pasos del monstruo: SIEMPRE lo oyes acercarse (no puede aparecer en silencio detrás de ti)
+    if (evento.id === "inundado" && now >= enemy.stepAt) salpica(enemy.x, enemy.y + 6, 7, 1.5);
     if (!player.hidden && dToP < 340 && now >= enemy.stepAt) {
       const vol = (1 - dToP / 340) * 0.22 + 0.035;
       const pan = Math.max(-1, Math.min(1, (enemy.x - player.x) / 260));
-      noise(0.07, vol, "lowpass", 190, pan);
-      setTimeout(() => noise(0.03, vol * 0.3, "lowpass", 520, pan), 25);
+      if (evento.id === "inundado") chapoteo(vol * 1.15, pan);          // en el agua se le oye llegar mejor
+      else { noise(0.07, vol, "lowpass", 190, pan); setTimeout(() => noise(0.03, vol * 0.3, "lowpass", 520, pan), 25); }
       enemy.stepAt = now + ((enemy.chasing || lured) ? 300 : 520);
     }
     // Se va herido del forcejeo: va dejando gotas por los pasillos (poquito)
@@ -1636,6 +1662,26 @@
   // así el suelo y los muros se ven continuos en vez de bloques repetidos.
   const BIGN = 6, BIG = BIGN * TILE;
   let texFloor = null, texWallTop = null, texWallFace = null, wallAtlas = null, atlasTheme = null;
+  let ondas = [], gotera = 0, texAgua = null, patAgua = null;
+  function salpica(x, y, r0, fuerza) {               // anillo que se abre y se desvanece
+    if (evento.id !== "inundado") return;
+    ondas.push({ x: x, y: y, t: performance.now(), r0: r0, f: fuerza });
+    if (ondas.length > 46) ondas.shift();
+  }
+  function buildAgua() {                              // textura de reflejos, sin coste por frame
+    texAgua = document.createElement("canvas"); texAgua.width = texAgua.height = 256;
+    const g = texAgua.getContext("2d"), st = { s: 9137 };
+    g.clearRect(0, 0, 256, 256);
+    for (let i = 0; i < 90; i++) {
+      const x = srnd(st) * 256, y = srnd(st) * 256, w = 14 + srnd(st) * 46, h = 1.5 + srnd(st) * 3;
+      const a = 0.04 + srnd(st) * 0.07;
+      g.fillStyle = "rgba(190,225,255," + a.toFixed(3) + ")";
+      g.beginPath(); g.ellipse(x, y, w, h, srnd(st) * 0.5 - 0.25, 0, 7); g.fill();
+      if (x > 256 - w) { g.beginPath(); g.ellipse(x - 256, y, w, h, 0, 0, 7); g.fill(); }
+      if (y > 256 - h) { g.beginPath(); g.ellipse(x, y - 256, w, h, 0, 0, 7); g.fill(); }
+    }
+    patAgua = ctx.createPattern(texAgua, "repeat");
+  }
   let mapaCanvas = null, mapaCtx = null;   // el escenario entero, pintado una sola vez por piso
   // Degradados de luz pre-cocinados: crearlos en cada frame costaba lo suyo
   const LUZ_PX = 160;
@@ -1763,7 +1809,7 @@
   function pintarEscenario() {
     if (!mapaCanvas) { mapaCanvas = document.createElement("canvas"); mapaCtx = mapaCanvas.getContext("2d"); }
     mapaCanvas.width = COLS * TILE; mapaCanvas.height = ROWS * TILE;
-    const g = mapaCtx;
+    const g = mapaCtx, agua = evento.id === "inundado";
     g.clearRect(0, 0, mapaCanvas.width, mapaCanvas.height);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const px = x * TILE, py = y * TILE;
@@ -1774,11 +1820,25 @@
         const combo = (wUp ? 1 : 0) | (wRt ? 2 : 0) | (wDn ? 4 : 0) | (wLf ? 8 : 0);
         g.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);
         g.drawImage(wallAtlas, combo * TILE, (((x % BIGN) + BIGN) % BIGN) * TILE, TILE, TILE, px, py, TILE, TILE);
+        if (agua && grid[y + 1] && grid[y + 1][x] === 0) {             // moho y humedad donde el muro toca el agua
+          g.fillStyle = "rgba(34,62,54,0.35)"; g.fillRect(px, py + TILE - 11, TILE, 11);
+          g.fillStyle = "rgba(60,96,74,0.22)"; g.fillRect(px, py + TILE - 14, TILE, 4);
+        }
       } else {
         g.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);
+        if (agua) {                                                    // el suelo bajo el agua: más oscuro y verdoso
+          g.fillStyle = "rgba(18,52,74,0.42)"; g.fillRect(px, py, TILE, TILE);
+          g.fillStyle = "rgba(40,96,110,0.12)"; g.fillRect(px, py + TILE * 0.55, TILE, TILE * 0.45);
+        }
         if (grid[y - 1] && grid[y - 1][x] === 1) g.drawImage(shadowTop, px, py);
         if (grid[y][x - 1] === 1) g.drawImage(shadowLeft, px, py);
         if (grid[y][x + 1] === 1) g.drawImage(shadowRight, px + TILE - shadowRight.width, py);
+        if (agua) {                                                    // la línea de agua contra cada muro
+          if (grid[y - 1] && grid[y - 1][x] === 1) { g.fillStyle = "rgba(150,205,230,0.22)"; g.fillRect(px, py, TILE, 2); }
+          if (grid[y + 1] && grid[y + 1][x] === 1) { g.fillStyle = "rgba(150,205,230,0.16)"; g.fillRect(px, py + TILE - 2, TILE, 2); }
+          if (grid[y][x - 1] === 1) { g.fillStyle = "rgba(150,205,230,0.18)"; g.fillRect(px, py, 2, TILE); }
+          if (grid[y][x + 1] === 1) { g.fillStyle = "rgba(150,205,230,0.18)"; g.fillRect(px + TILE - 2, py, 2, TILE); }
+        }
       }
     }
   }
@@ -1844,6 +1904,27 @@
     if (mapaCanvas) ctx.drawImage(mapaCanvas, x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE,
                                               x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE);
 
+    // --- AGUA: reflejos que se mueven y ondas de las pisadas
+    if (evento.id === "inundado") {
+      if (!patAgua) buildAgua();
+      const vx = x0 * TILE, vy = y0 * TILE, vw = (x1 - x0) * TILE, vh = (y1 - y0) * TILE;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.translate(Math.sin(now / 2600) * 14, (now / 70) % 256);          // la lámina de agua se mueve despacio
+      ctx.fillStyle = patAgua; ctx.fillRect(vx - 20, vy - 300, vw + 40, vh + 600);
+      ctx.restore();
+      ctx.save(); ctx.lineWidth = 1.4;
+      for (let i = ondas.length - 1; i >= 0; i--) {
+        const o = ondas[i], e = (now - o.t) / 1100;
+        if (e >= 1) { ondas.splice(i, 1); continue; }
+        const r = o.r0 + e * 34 * o.f, a = (1 - e) * 0.34 * o.f;
+        ctx.strokeStyle = "rgba(205,235,255," + a.toFixed(3) + ")";
+        ctx.beginPath(); ctx.ellipse(o.x, o.y + 3, r, r * 0.42, 0, 0, 7); ctx.stroke();
+        if (e < 0.55) { ctx.strokeStyle = "rgba(170,210,235," + (a * 0.55).toFixed(3) + ")"; ctx.beginPath(); ctx.ellipse(o.x, o.y + 3, r * 0.55, r * 0.23, 0, 0, 7); ctx.stroke(); }
+      }
+      ctx.restore();
+    }
+
     // Sangre (eventos)
     for (const sp of salpicaduras) {                                        // lo que quedó en la pared
       ctx.save(); ctx.globalAlpha = 0.62;
@@ -1900,7 +1981,7 @@
     drawBocadillos(now, shx, shy);          // encima de la luz: siempre legibles
 
     if (evento.id === "niebla") { ctx.fillStyle = "rgba(150,152,146,0.14)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
-    if (evento.id === "inundado") { ctx.fillStyle = "rgba(40,78,110,0.16)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    if (evento.id === "inundado") { ctx.fillStyle = "rgba(30,64,92,0.10)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (now < flashWhiteUntil) { ctx.fillStyle = "rgba(255,245,230,0.5)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (now < lightningUntil) { ctx.fillStyle = "rgba(210,225,255," + (0.4 + Math.random() * 0.25).toFixed(3) + ")"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 

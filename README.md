@@ -23,7 +23,8 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - **Carácter propio**: Nico se adelanta y explora, Rulo se queda atrás y dispara de lejos, Checo apunta mejor (245 px de alcance y más cadencia)
 - **Hablan**: bocadillos cortos — "¡a tu espalda!", "casi sin pila", "voy a echar un ojo", "¡ayuda!"
 - **Compa derribado**: cuando el monstruo lo deja sin vida y no se lo lleva, queda **malherido en el suelo** sangrando; tienes **20 s** para llegar y levantarlo (**E**). Si el monstruo lo alcanza antes, se lo lleva
-- **Eventos de piso** (45 % de las veces): **inundado** (todos más lentos), **apagón total** (sin focos hasta el generador) o **niebla** (menos visión)
+- **Eventos de piso** (45 % de las veces): **inundado**, **apagón total** (sin focos hasta el generador) o **niebla** (conos al 62 %)
+- El **piso inundado** va con agua de verdad: suelo oscurecido y verdoso, línea de agua contra cada muro, moho en la base de las paredes, lámina de reflejos moviéndose, **ondas que se abren con cada pisada** (tuya, de los compas y del monstruo), **chapoteos** en vez de pisadas secas y goteras del techo. Todos vais al 78 % de velocidad y **al monstruo se le oye llegar mejor** por el agua
 - **Resumen de partida** al terminar: tiempo, pisos, llaves, compas perdidos/levantados/rescatados, puntería, golpes, notas y objetos
 - **Rescate**: al compa que se lleva el monstruo puedes recuperarlo. Aparece **atado y solo** en una habitación del **piso siguiente**, con dos minis guardándolo. Tienes **ese piso** para llegar hasta él (**E** para soltarlo); si bajas sin rescatarlo, lo pierdes
 - **Minis explosivos**: bichos verdes que te detectan a 210 px, **corren hacia ti y revientan** salpicando verde y rojo el suelo **y las paredes**. Un tiro los hace estallar a distancia
