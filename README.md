@@ -52,4 +52,4 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - **Logros**, **tabla de récords** por dificultad, **dificultades** (Fácil/Normal/Pesadilla)
 - **Menú de opciones** (volumen de música/efectos, brillo, pausa) + **tutorial**
 - Cinemáticas: intro, transición de piso, final al escapar y al morir
-- Música de fondo y pasos (más rápidos al correr) · soporte de gamepad
+- Música de fondo y **pasos distintos según el suelo que pises**: hormigón (golpe sordo y seco), tablones de la biblioteca (toc de madera con crujidos), baldosa de la enfermería (chasquido con colita de eco) y chapoteo si el piso está inundado. Tus compas también suenan al andar, más flojo y por su lado · soporte de gamepad
