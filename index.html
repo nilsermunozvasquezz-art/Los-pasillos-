@@ -1862,6 +1862,7 @@
     ctx.restore();
 
     drawLighting(shx, shy, now);
+    drawBocadillos(now, shx, shy);          // encima de la luz: siempre legibles
 
     if (evento.id === "niebla") { ctx.fillStyle = "rgba(150,152,146,0.14)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (evento.id === "inundado") { ctx.fillStyle = "rgba(40,78,110,0.16)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
@@ -1964,6 +1965,38 @@
     ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(fx, fy, 3.2, 0, 7); ctx.fill();
     if (player.light) { ctx.fillStyle = "#ffe9a8"; ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, 7); ctx.fill(); }
   }
+  // Los bocadillos se pintan DESPUÉS de todos, bien arriba y escalonados: así no se tapan
+  function drawBocadillos(now, shx, shy) {
+    const hablando = compas.filter(c => c.alive && c.dice && now < c.diceHasta);
+    if (!hablando.length) return;
+    const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
+    ctx.save();
+    ctx.font = "bold 11px Courier New"; ctx.textBaseline = "alphabetic";
+    hablando.forEach((c, i) => {
+      const nom = c.name + ":";
+      const wn = ctx.measureText(nom).width;
+      ctx.font = "11px Courier New";
+      const wf = ctx.measureText(c.dice).width;
+      const w = wn + wf + 18, h = 17;
+      const cx = c.x - camX + shx, cy = c.y - camY + shy;                  // a coordenadas de pantalla
+      let bx = cx - w / 2, by = cy - PLAYER_R - 48 - i * 26;               // bien por encima de la cabeza y sin pisarse
+      bx = Math.max(4, Math.min(VIEW_W - w - 4, bx)); by = Math.max(4, by);  // y sin salirse de la pantalla
+      ctx.fillStyle = "rgba(10,12,16,0.9)";
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, h, 4) : ctx.rect(bx, by, w, h); ctx.fill();
+      ctx.strokeStyle = c.color; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx + 0.5, by + 0.5, w - 1, h - 1, 4) : ctx.rect(bx + 0.5, by + 0.5, w - 1, h - 1); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(10,12,16,0.9)";                                 // piquito hacia el compa
+      ctx.beginPath(); ctx.moveTo(cx - 4, by + h - 1); ctx.lineTo(cx + 4, by + h - 1); ctx.lineTo(cx, by + h + 6); ctx.fill();
+      ctx.textAlign = "left";
+      ctx.font = "bold 11px Courier New"; ctx.fillStyle = c.color;
+      ctx.fillText(nom, bx + 8, by + 12);
+      ctx.font = "11px Courier New"; ctx.fillStyle = c.estado === "derribado" ? "#ffb0a4" : "#e8eef6";
+      ctx.fillText(c.dice, bx + 8 + wn + 5, by + 12);
+    });
+    ctx.restore();
+    ctx.textAlign = "left";
+  }
   function drawMini(m, now) {
     const x = m.x, y = m.y, pulso = m.activo ? 1 + Math.sin(now / 90) * 0.14 : 1;
     ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 6, MINI_R, MINI_R * 0.45, 0, 0, 7); ctx.fill();
@@ -2000,12 +2033,6 @@
       ctx.fillStyle = c.color; ctx.beginPath(); ctx.ellipse(x - 2, y - 1, 7, 4.5, 0.3, 0, 7); ctx.fill();
       ctx.fillStyle = "rgba(255,90,80," + pal.toFixed(2) + ")"; ctx.font = "bold 11px Courier New"; ctx.textAlign = "center";
       ctx.fillText("+", x, y - 14); ctx.textAlign = "left";
-      if (now < c.diceHasta && c.dice) {
-        ctx.font = "9px Courier New"; ctx.textAlign = "center";
-        const w = ctx.measureText(c.dice).width + 10;
-        ctx.fillStyle = "rgba(12,14,18,0.82)"; ctx.fillRect(x - w / 2, y - 35, w, 12);
-        ctx.fillStyle = "#ffb0a4"; ctx.fillText(c.dice, x, y - 26); ctx.textAlign = "left";
-      }
       return;
     }
     const x = c.x, y = c.y, r = PLAYER_R - 1.5;
@@ -2022,15 +2049,6 @@
       ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.3 + pb * 0.6, 0, 7); ctx.fill();
     }
     if (now < c.hurtUntil) { ctx.fillStyle = "rgba(255,226,150,0.95)"; ctx.beginPath(); ctx.arc(gx, gy, 4.5, 0, 7); ctx.fill(); }   // fogonazo
-    if (now < c.diceHasta && c.dice) {                                        // bocadillo
-      ctx.font = "9px Courier New"; ctx.textAlign = "center";
-      const w = ctx.measureText(c.dice).width + 10, by = y - r - 20 - c.slot * 9;
-      ctx.fillStyle = "rgba(12,14,18,0.82)"; ctx.fillRect(x - w / 2, by - 9, w, 12);
-      ctx.strokeStyle = "rgba(190,200,215,0.35)"; ctx.lineWidth = 1; ctx.strokeRect(x - w / 2 + 0.5, by - 8.5, w - 1, 11);
-      ctx.fillStyle = "#dfe6ef"; ctx.fillText(c.dice, x, by);
-      ctx.fillStyle = "rgba(12,14,18,0.82)"; ctx.beginPath(); ctx.moveTo(x - 3, by + 3); ctx.lineTo(x + 3, by + 3); ctx.lineTo(x, by + 7); ctx.fill();
-      ctx.textAlign = "left";
-    }
     const ny = y - r - 5 - c.slot * 9;
     ctx.fillStyle = c.hp <= 50 ? "rgba(224,106,90,0.9)" : "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
     ctx.fillText(c.name, x, ny); ctx.textAlign = "left";                      // escalonados: no se pisan al ir juntos
