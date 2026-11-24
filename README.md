@@ -19,6 +19,12 @@ Abre `index.html` en cualquier navegador (no requiere instalación).
 - **3 compas** (Nico, Rulo y Checo) que te siguen y disparan solos, con **barra de vida** encima: aguantan **2 zarpazos** del monstruo y al segundo se los lleva **en tu lugar**. Heridos cojean y disparan más lento; se curan solos si el monstruo anda lejos (+2,2 %/s) y +40 % al bajar de piso. El que cae no vuelve
 - **Comportamiento de escuadrón**: con calma, uno se adelanta a **revisar** un rincón cercano y vuelve a la formación, los dos trayectos **a paso normal**. Si uno **ve al monstruo y dispara**, si el monstruo hiere a alguno, o si **el monstruo te persigue a ti**, **los tres corren a ayudar**; cuando se aleja, todos regresan contigo
 - **Embestida**: de vez en cuando (no más de una cada ~1-1,5 min, y nunca al empezar el piso) el monstruo se olvida de ti y **va expresamente a por un compa**, avisando en pantalla. Mientras embiste, los disparos le frenan menos, así que hay que reaccionar rápido
+- **Órdenes al escuadrón** (`C` o el botón COMPAS): alterna entre **CONMIGO** y **CUBRIENDO**, que los deja aguantando el punto donde estabas; ahí solo acuden a un aviso si cae a menos de 170 px
+- **Carácter propio**: Nico se adelanta y explora, Rulo se queda atrás y dispara de lejos, Checo apunta mejor (245 px de alcance y más cadencia)
+- **Hablan**: bocadillos cortos — "¡a tu espalda!", "casi sin pila", "voy a echar un ojo", "¡ayuda!"
+- **Compa derribado**: cuando el monstruo lo deja sin vida y no se lo lleva, queda **malherido en el suelo** sangrando; tienes **20 s** para llegar y levantarlo (**E**). Si el monstruo lo alcanza antes, se lo lleva
+- **Eventos de piso** (45 % de las veces): **inundado** (todos más lentos), **apagón total** (sin focos hasta el generador) o **niebla** (menos visión)
+- **Resumen de partida** al terminar: tiempo, pisos, llaves, compas perdidos/levantados/rescatados, puntería, golpes, notas y objetos
 - **Rescate**: al compa que se lleva el monstruo puedes recuperarlo. Aparece **atado y solo** en una habitación del **piso siguiente**, con dos minis guardándolo. Tienes **ese piso** para llegar hasta él (**E** para soltarlo); si bajas sin rescatarlo, lo pierdes
 - **Minis explosivos**: bichos verdes que te detectan a 210 px, **corren hacia ti y revientan** salpicando verde y rojo el suelo **y las paredes**. Un tiro los hace estallar a distancia
 - **Vida del jugador**: aguantas **2 zarpazos** del monstruo (3 reventones de mini); el contacto ya no te mata de uno. Se recupera sola si el monstruo anda lejos

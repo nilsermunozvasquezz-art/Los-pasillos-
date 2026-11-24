@@ -22,9 +22,15 @@
   #battWrap { color: #9fb7c9; }
   #sanWrap { color: #b2a0d0; }
   #stamWrap { color: #cdbb8a; }
+  .resumen { margin: 10px auto 4px; max-width: 420px; width: 92%; font-size: 12px; color: #9fb0c4; }
+  .resumen table { width: 100%; border-collapse: collapse; }
+  .resumen td { padding: 3px 6px; border-bottom: 1px solid rgba(140,160,190,.12); }
+  .resumen td:last-child { text-align: right; color: #e6ecf4; font-weight: bold; }
+  .resumen .tit { color: #ffcf4d; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid rgba(255,207,77,.3); }
   #itemsHud { font-size: 11px; color: #8a9ab0; }
   #itemsHud .ic { color: #ffcf4d; }
-  #msg { color: #d14b4b; font-size: 13px; opacity: 0; transition: opacity .25s; text-align: center; flex: 1; margin-top: 4px; }
+  #msg { color: #d14b4b; font-size: 13px; opacity: 0; transition: opacity .25s; text-align: center; flex: 1; margin-top: 4px; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 520px) { #msg { font-size: 11px; } }
   #msg.show { opacity: 1; }
   #pauseBtn { pointer-events: auto; background: rgba(0,0,0,.4); border: 1px solid #556; color: #cdd; font-family: inherit; font-size: 15px; width: 34px; height: 30px; cursor: pointer; border-radius: 3px; }
 
@@ -89,6 +95,9 @@
   #stick { position: absolute; bottom: 32px; left: 32px; width: 128px; height: 128px; border-radius: 50%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15); pointer-events: auto; touch-action: none; }
   #nub { position: absolute; top: 50%; left: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); }
   .tbtn { position: absolute; border-radius: 50%; pointer-events: auto; touch-action: none; font-family: inherit; letter-spacing: 1px; }
+  #ordenBtn { bottom: 178px; left: 36px; width: 76px; height: 76px; background: rgba(70,110,95,.18); border: 1px solid rgba(140,210,180,.4); color: #cfe9dd; font-size: 9px; line-height: 1.3; }
+  #ordenBtn.esperando { background: rgba(150,110,45,.24); border-color: rgba(230,185,95,.55); color: #ffe6b8; }
+  #ordenBtn b { font-size: 10px; }
   #actionBtn { bottom: 34px; right: 30px; width: 84px; height: 84px; background: rgba(90,110,130,.18); border: 1px solid rgba(160,190,220,.4); color: #cfe; font-size: 13px; line-height: 1.25; transition: background .12s, border-color .12s, color .12s; }
   #actionBtn.shootMode { background: rgba(150,55,45,.24); border-color: rgba(235,120,100,.55); color: #ffd8cc; font-size: 11px; }
   #actionBtn.shootMode b { font-size: 15px; color: #ffcf4d; }
@@ -127,6 +136,7 @@
     <button id="lightBtn" class="tbtn">LUZ</button>
     <button id="radarBtn" class="tbtn">RADAR</button>
     <button id="decoyBtn" class="tbtn">SEÑUELO</button>
+    <button id="ordenBtn" class="tbtn">COMPAS<br><b>CONMIGO</b></button>
     <button id="actionBtn" class="tbtn">ACCIÓN</button>
   </div>
 
@@ -160,14 +170,15 @@
       <p>🗺️ <b>Mapa del piso:</b> dibuja los <span class="hi">pasillos</span> en el minimapa (sabes <i>cómo llegar</i>). 🖥️ <b>Cámaras</b> de la sala de control (E): marcan <span class="hi">dónde están</span> las llaves que faltan, el generador y el ascensor 20 s, y localizan al monstruo 8 s. Son reutilizables.</p>
       <p>🔦 <b>Linterna (F):</b> te deja ver y ver el minimapa, <span class="hi">pero la luz atrae al monstruo</span>. Apágala para pasar desapercibido. Se gasta: recoge <span class="hi">pilas</span>.</p>
       <p>👥 <b>Tus compas:</b> Nico, Rulo y Checo te siguen con <b>su propia linterna</b> (se abren en abanico, se apagan con la tuya al pulsar F y <b>gastan pila igual que tú</b>: cada <b>pila</b> que recojas te da +45% y les reparte +30% a cada uno) y <b>disparan solos</b> si lo tienen a tiro. Tienen <span class="hi">barra de vida</span> encima: el monstruo los hiere (aguantan <b>2 zarpazos</b>) y al segundo se los lleva <span class="hi">en tu lugar</span>. Heridos cojean y apuntan peor; se recuperan solos si el monstruo anda lejos. El que cae <b>no vuelve</b>.</p>
-      <p>🎖️ <b>Trabajan como escuadrón:</b> cuando todo está tranquilo <span class="hi">uno se adelanta a revisar</span> un rincón cercano y vuelve a la formación, andando. Si uno <span class="hi">ve al monstruo y abre fuego</span>, o si el monstruo ataca a alguno, <span class="hi">los tres corren a ayudar</span>; cuando se aleja, todos regresan contigo. De vez en cuando el monstruo <span class="hi">se olvida de ti y va a por uno de ellos</span> (te avisa en pantalla): corre a cubrirlo. Y a veces no lo mata ahí: <span class="hi">se lo lleva a rastras a la oscuridad</span> y solo ves su linterna alejarse, dando tumbos, hasta que se apaga.</p>
+      <p>🎖️ <b>Trabajan como escuadrón:</b> cuando todo está tranquilo <span class="hi">uno se adelanta a revisar</span> un rincón cercano y vuelve a la formación, andando. Si uno <span class="hi">ve al monstruo y abre fuego</span>, o si el monstruo ataca a alguno, <span class="hi">los tres corren a ayudar</span>; cuando se aleja, todos regresan contigo. Cada uno tiene su carácter: <b>Nico</b> se adelanta, <b>Rulo</b> se queda atrás y <b>Checo</b> apunta mejor y más lejos. Te avisan por dónde viene. De vez en cuando el monstruo <span class="hi">se olvida de ti y va a por uno de ellos</span>: si lo deja <span class="hi">malherido en el suelo</span> tienes <b>20 s</b> para llegar y levantarlo (<b>E</b>).</p>
+      <p>🎖️ <b>Órdenes (C o el botón COMPAS):</b> alterna entre <span class="hi">CONMIGO</span> y <span class="hi">CUBRIENDO</span>, que los deja aguantando el punto donde estés al dar la orden. 🌫️ Algunos pisos salen <span class="hi">inundados, a oscuras o con niebla</span>. Y a veces no lo mata ahí: <span class="hi">se lo lleva a rastras a la oscuridad</span> y solo ves su linterna alejarse, dando tumbos, hasta que se apaga.</p>
       <p>🔫 <b>Disparar (Espacio / botón):</b> el monstruo <b>no muere</b>, pero retrocede unos segundos. El estruendo <span class="hi">le dice dónde estás</span>, así que no dispares por gusto. Busca <b>cajas de munición</b>.</p>
       <p>🎮 <b>El botón cambia solo:</b> normalmente pone <span class="hi">DISPARAR</span>; si tienes delante el generador, un armario o la consola pasa a <span class="hi">ACCIÓN</span> y no dispara, para que no gastes balas sin querer.</p>
       <p>🚪 <b>Esconderte (E):</b> métete en un armario cuando esté cerca. 🟣 <b>Señuelo (Q):</b> lo lanzas y el monstruo va al ruido. 👢 <b>Botas:</b> corre con Shift.</p>
       <p>🧠 <b>Cordura:</b> baja con el miedo y distorsiona la pantalla; se recupera escondido o lejos del peligro. Cuidado con las <span class="hi">trampas</span> del suelo.</p>
     </div>
     <div class="controls">
-      <kbd>WASD</kbd>/flechas mover · <kbd>Espacio</kbd> disparar/acción · <kbd>E</kbd> acción · <kbd>Shift</kbd> correr · <kbd>F</kbd> linterna · <kbd>Q</kbd> señuelo · <kbd>R</kbd> radar · <kbd>P</kbd> pausa · 🎮 control
+      <kbd>WASD</kbd> mover · <kbd>Espacio</kbd> disparar/acción · <kbd>E</kbd> acción · <kbd>C</kbd> órdenes · <kbd>Shift</kbd> correr · <kbd>F</kbd> linterna · <kbd>Q</kbd> señuelo · <kbd>R</kbd> radar · <kbd>P</kbd> pausa · 🎮
     </div>
     <button class="main" id="tutClose">Entendido</button>
   </div>
@@ -221,6 +232,7 @@
   <div class="screen hidden" id="overScreen">
     <h1>TE ATRAPÓ</h1>
     <p id="overText">No lograste escapar de los pasillos.</p>
+    <div class="resumen" id="overResumen"></div>
     <button class="main" id="retryBtn">Intentar de nuevo</button>
   </div>
 
@@ -228,6 +240,7 @@
   <div class="screen hidden" id="winScreen">
     <h1 class="win">ESCAPASTE</h1>
     <p id="winText">Cruzaste la puerta con las 5 llaves.</p>
+    <div class="resumen" id="winResumen"></div>
     <button class="main" id="againBtn">Jugar otra vez</button>
   </div>
 
@@ -382,16 +395,36 @@
   const player = { x: 0, y: 0, vx: 0, vy: 0, face: Math.PI / 4, battery: 100, hidden: false, stunUntil: 0, light: true, sanity: 100, stamina: 100, hasBoots: false, decoys: 0, radars: 0, stepAt: 0, ammo: 10, shootAt: 0, flashUntil: 0, hp: 100, golpeAt: 0, dmgUntil: 0 };
   const enemy = { x: 0, y: 0, path: [], repathT: 0, chasing: false, alertUntil: 0, lureUntil: 0, lurePos: null, lastSeen: null, searchUntil: 0, trail: [], trailT: 0, stepAt: 0, fleeUntil: 0, hits: 0, hurtUntil: 0, objetivo: null, objetivoHasta: 0, goteaHasta: 0, goteaAt: 0 };
   // Los 3 compas: te siguen, llevan su propia arma y pueden morir en tu lugar
+  // Cada compa tiene su carácter: Nico se adelanta, Rulo se queda atrás, Checo apunta mejor
   const COMPA_DEF = [
-    { name: "Nico",  color: "#6fae7a", dark: "#2f4a35" },
-    { name: "Rulo",  color: "#c08a55", dark: "#4a3524" },
-    { name: "Checo", color: "#7f8fc0", dark: "#2f3650" },
+    { name: "Nico",  color: "#6fae7a", dark: "#2f4a35", rol: "valiente",
+      sep: -14, vel: 1.12, alcance: 190, cadencia: 1.0,  punteria: 0.16, explora: 2.2, balas: 8,  agallas: 1.0 },
+    { name: "Rulo",  color: "#c08a55", dark: "#4a3524", rol: "miedoso",
+      sep: 22,  vel: 1.0,  alcance: 215, cadencia: 1.15, punteria: 0.24, explora: 0.25, balas: 9, agallas: 0.45 },
+    { name: "Checo", color: "#7f8fc0", dark: "#2f3650", rol: "tirador",
+      sep: 4,   vel: 1.0,  alcance: 245, cadencia: 0.72, punteria: 0.07, explora: 1.0, balas: 11, agallas: 0.85 },
   ];
   let compas = [], bullets = [], ammoPickups = [], minis = [], salpicaduras = [];
   const N_MINIS = 2, MINI_R = 8, MINI_VISTA = 210, MINI_RADIO = 54;   // los que revientan
   let squadAlerta = 0, squadPos = null, exploraAt = 0, embestidaAt = 0, zarpazoCompaAt = 0;
-  let preso = null, nearPreso = false;   // el compa que se llevó, esperando rescate en el piso siguiente   // embestidas y descanso entre zarpazos a compas   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, x: 0, y: 0, face: 0, alive: true, ammo: COMPA_AMMO, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0, capturado: false });
+  let ultimaFrase = 0;
+  function dice(c, txt, prio) {               // bocadillo corto encima del compa
+    const now = performance.now();
+    if (!prio && (now < ultimaFrase + 2200 || now < c.hablaAt)) return;
+    c.dice = txt; c.diceHasta = now + 2300; c.hablaAt = now + 5000; ultimaFrase = now;
+  }
+  const EVENTOS = [
+    { id: "normal",    nombre: "",                 desc: "" },
+    { id: "inundado",  nombre: "PISO INUNDADO",    desc: "el agua os frena a todos" },
+    { id: "apagon",    nombre: "APAGÓN TOTAL",     desc: "ni un foco hasta el generador" },
+    { id: "niebla",    nombre: "NIEBLA",           desc: "no se ve a tres metros" },
+  ];
+  let evento = EVENTOS[0];
+  let stats = null;
+  const nuevasStats = () => ({ disparos: 0, aciertos: 0, minis: 0, golpes: 0, caidos: 0, levantados: 0, rescatados: 0, pilas: 0, muni: 0, pisos: 1, eventos: [] });
+  let escuadraModo = "conmigo", esperaPos = null;   // órdenes al escuadrón
+  let preso = null, nearPreso = false, caido = null, nearCaido = false;   // compa derribado, esperando que lo levantes   // el compa que se llevó, esperando rescate en el piso siguiente   // embestidas y descanso entre zarpazos a compas   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, rol: d.rol, sep: d.sep, vel: d.vel, alcance: d.alcance, cadencia: d.cadencia, punteria: d.punteria, explora: d.explora, agallas: d.agallas, dice: null, diceHasta: 0, hablaAt: 0, x: 0, y: 0, face: 0, alive: true, ammo: d.balas, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0, capturado: false, sangraAt: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -566,11 +599,16 @@
     // ---- Los compas: en una partida nueva son 3; al bajar de piso solo siguen los que sobrevivieron
     bullets = []; player.shootAt = 0; player.flashUntil = 0;
     squadAlerta = 0; squadPos = null; exploraAt = performance.now() + 9000;
+    escuadraModo = "conmigo"; esperaPos = null; caido = null; nearCaido = false;
+    if (fresh || !stats) stats = nuevasStats(); else stats.pisos++;
+    evento = Math.random() < 0.45 ? EVENTOS[1 + ((Math.random() * 3) | 0)] : EVENTOS[0];
+    if (evento.id !== "normal") stats.eventos.push(evento.nombre);
+    if (evento.id === "apagon") for (const w of wallLights) { w.on = false; w.toggleAt = performance.now() + 999999; }
     enemy.objetivo = null; enemy.objetivoHasta = 0; embestidaAt = performance.now() + 35000 + Math.random() * 25000; zarpazoCompaAt = 0;
     enemy.fleeUntil = 0; enemy.hits = 0; enemy.hurtUntil = 0;
     if (fresh) compas = COMPA_DEF.map(mkCompa);   // los que murieron NO vuelven al bajar de piso
     const vivos = compas.filter(c => c.alive);
-    vivos.forEach((c, i) => { c.slot = i; c.ammo = COMPA_AMMO; c.path = []; c.repathT = 0; c.shootAt = 0; c.hurtUntil = 0; c.golpeAt = 0; c.hp = Math.min(100, c.hp + 40); c.estado = "seguir"; c.destino = null; });   // se curan algo entre pisos; la pila NO se recarga sola
+    vivos.forEach((c, i) => { c.slot = i; c.ammo = COMPA_DEF.find(d => d.name === c.name).balas; c.path = []; c.repathT = 0; c.shootAt = 0; c.hurtUntil = 0; c.golpeAt = 0; c.hp = Math.min(100, c.hp + 40); c.estado = "seguir"; c.destino = null; });   // se curan algo entre pisos; la pila NO se recarga sola
     // aparecen en casillas libres pegadas a ti (nunca dentro de un muro ni encima de un mueble)
     const cercaDeTi = cells.filter(([x, y]) => sd[y][x] >= 1 && sd[y][x] <= 4 && !furnSet.has(x + "," + y));
     cercaDeTi.sort((a, b) => sd[a[1]][a[0]] - sd[b[1]][b[0]]);
@@ -613,13 +651,14 @@
     decoysActive = []; bloodDecals = []; collected = 0; nearLocker = null; nearGen = false; fearPulse = 0;
     glitchUntil = 0; scareUntil = 0; flashWhiteUntil = 0; radarUntil = 0; trackUntil = 0;
     document.getElementById("stamWrap").style.display = player.hasBoots ? "flex" : "none";
-    updateHud(); updateBatt(); updateSan(); updateVida(); updateFloorHud();
+    updateHud(); updateBatt(); updateSan(); updateVida(); updateFloorHud(); avisaEvento();
   }
   function newRun() {
     floorIdx = 0; notesFound = 0; notesPlaced = 0; newRecord = false; newAch = []; runSprinted = false; runChased = false;
     buildFloor(true); startTime = performance.now(); elapsed = 0;
   }
-  function updateFloorHud() { document.getElementById("floorHud").textContent = "PISO " + (floorIdx + 1) + "/" + FLOORS.length + " · " + FLOORS[floorIdx].name; }
+  function avisaEvento() { if (evento.id !== "normal") setTimeout(() => flashMsg(evento.nombre + " — " + evento.desc), 900); }
+  function updateFloorHud() { document.getElementById("floorHud").textContent = "PISO " + (floorIdx + 1) + "/" + FLOORS.length + " · " + FLOORS[floorIdx].name + (evento.id !== "normal" ? " · " + evento.nombre : ""); }
 
   // ---------------------------------------------------------------- Input
   const pressed = {};
@@ -636,6 +675,7 @@
     if (e.code === "KeyF") { toggleLight(); e.preventDefault(); }
     if (e.code === "KeyQ") { throwDecoy(); e.preventDefault(); }
     if (e.code === "KeyR") { useRadar(); e.preventDefault(); }
+    if (e.code === "KeyC") { ordenEscuadra(); e.preventDefault(); }
   });
   addEventListener("keyup", e => {
     if (KEYMAP[e.code]) { pressed[KEYMAP[e.code]] = false; e.preventDefault(); }
@@ -662,7 +702,8 @@
   addEventListener("mousemove", e => { if (touch.active) stickMove(e); });
   addEventListener("mouseup", stickEnd);
   function bindBtn(id, fn) { const el = document.getElementById(id); el.addEventListener("touchstart", e => { e.preventDefault(); if (running && !paused) fn(); }); el.addEventListener("mousedown", e => { e.preventDefault(); if (running && !paused) fn(); }); }
-  bindBtn("actionBtn", () => { if (contextAction()) interact(); else shoot(); }); bindBtn("lightBtn", toggleLight); bindBtn("decoyBtn", throwDecoy); bindBtn("radarBtn", useRadar);
+  bindBtn("actionBtn", () => { if (contextAction()) interact(); else shoot(); });
+  bindBtn("ordenBtn", ordenEscuadra); bindBtn("lightBtn", toggleLight); bindBtn("decoyBtn", throwDecoy); bindBtn("radarBtn", useRadar);
   document.getElementById("pauseBtn").addEventListener("click", () => { if (running) togglePause(); });
   if ("ontouchstart" in window) { document.getElementById("startHint").textContent = "Joystick + botones · Sonido 🎧"; } // los controles se muestran al empezar el juego, no en el menú
 
@@ -683,10 +724,29 @@
     if (cine) { if (hit(0) || hit(9)) endCinematic(); gpPrev = p.buttons.map(b => b.pressed); return; }
     if (hit(9)) { if (running) togglePause(); }
     if (!running || paused) { if (hit(0)) startBtnAction(); }
-    else { if (hit(0)) { if (contextAction()) interact(); else shoot(); } if (hit(1)) toggleLight(); if (hit(2)) throwDecoy(); if (hit(3)) useRadar(); }
+    else { if (hit(0)) { if (contextAction()) interact(); else shoot(); } if (hit(1)) toggleLight(); if (hit(2)) throwDecoy(); if (hit(3)) useRadar(); if (hit(4) || hit(5)) ordenEscuadra(); }
     gpPrev = p.buttons.map(b => b.pressed);
   }
 
+  // 10) Órdenes: alterna entre que te sigan y que cubran el punto donde estás
+  function ordenEscuadra() {
+    const vivos = compas.filter(c => c.alive && c.estado !== "arrastrado" && c.estado !== "derribado");
+    if (!vivos.length) { flashMsg("No queda nadie a quien dar órdenes"); return; }
+    if (escuadraModo === "conmigo") {
+      escuadraModo = "esperar"; esperaPos = { x: player.x, y: player.y };
+      for (const c of vivos) { c.estado = "posicion"; c.path = []; c.repathT = 0; c.destino = null; }
+      beep(680, 0.06, "square", 0.13); setTimeout(() => beep(520, 0.07, "square", 0.12), 70);
+      flashMsg("ORDEN: cubrid esta posición");
+      dice(vivos[0], "Recibido, cubrimos", true);
+    } else {
+      escuadraModo = "conmigo"; esperaPos = null;
+      for (const c of vivos) if (c.estado === "posicion") { c.estado = "seguir"; c.path = []; c.repathT = 0; }
+      beep(520, 0.06, "square", 0.13); setTimeout(() => beep(760, 0.07, "square", 0.12), 70);
+      flashMsg("ORDEN: conmigo");
+      dice(vivos[0], "Vamos contigo", true);
+    }
+    updateActionBtn();
+  }
   function toggleLight() {
     player.light = !player.light;
     beep(player.light ? 320 : 150, 0.06, "square", 0.12);
@@ -697,6 +757,15 @@
   }
   function interact() {
     if (player.hidden) { player.hidden = false; flashMsg("Sales del armario"); return; }
+    if (nearCaido && caido) {
+      const c = caido; c.estado = "seguir"; c.hp = 45; c.path = []; c.repathT = 0; c.estadoHasta = 0;
+      caido = null; nearCaido = false;
+      beep(520, 0.09, "sine", 0.17); setTimeout(() => beep(780, 0.12, "sine", 0.16), 90);
+      player.sanity = Math.min(100, player.sanity + 10);
+      if (stats) stats.levantados++;
+      dice(c, "¡Gracias, tío!", true); flashMsg("Levantaste a " + c.name); updateHud();
+      return;
+    }
     if (nearPreso && preso) {
       const c = preso.compa;
       c.alive = true; c.hp = 50; c.capturado = false; c.estado = "seguir"; c.path = []; c.repathT = 0;
@@ -705,6 +774,7 @@
       preso = null; nearPreso = false;
       beep(600, 0.1, "sine", 0.18); setTimeout(() => beep(900, 0.12, "sine", 0.17), 90); setTimeout(() => beep(1200, 0.16, "sine", 0.16), 190);
       player.sanity = Math.min(100, player.sanity + 18);
+      if (stats) stats.rescatados++;
       flashMsg("¡" + c.name + " rescatado!"); updateHud();
       return;
     }
@@ -723,6 +793,7 @@
   // ¿Hay algo delante que pida ACCIÓN? Si lo hay, el botón deja de disparar.
   function contextAction() {
     if (player.hidden) return "salir";
+    if (nearCaido) return "levantar";
     if (nearPreso) return "rescatar";
     if (nearControl) return "consola";
     if (nearGen && !generator.on) return "generador";
@@ -747,7 +818,7 @@
     const now = performance.now();
     if (now < player.shootAt || now < player.stunUntil) return;
     if (player.ammo <= 0) { beep(220, 0.05, "square", 0.1); flashMsg("Sin balas — busca munición"); return; }
-    player.ammo--; player.shootAt = now + 330; player.flashUntil = now + 70;
+    player.ammo--; player.shootAt = now + 330; player.flashUntil = now + 70; if (stats) stats.disparos++;
     fireBullet(player.x, player.y, player.face, "player");
     gunshot(player.x, player.y, 0);
     player.sanity = Math.max(0, player.sanity - 1.5);
@@ -971,7 +1042,8 @@
     return path;
   }
   function enemyRepath() {
-    const ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE);
+    let ex = Math.floor(enemy.x / TILE), ey = Math.floor(enemy.y / TILE);
+    ex = Math.max(0, Math.min(COLS - 1, ex)); ey = Math.max(0, Math.min(ROWS - 1, ey));   // nunca fuera de la rejilla
     const now = performance.now();
     // BFS desde el monstruo (con distancias) para reusarlo en todos los casos
     const prev = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
@@ -1017,6 +1089,7 @@
   // Lleva al compa hacia un punto; devuelve lo que le falta
   function compaVa(c, tx, ty, mult, dt) {
     // Arranca rapidito (para no descolgarse) pero frena suave (para que no parezca un salto)
+    if (evento.id === "inundado") mult *= 0.8;
     c.mult += (mult - c.mult) * Math.min(1, dt / 60 * (mult > c.mult ? 7.5 : 3.5));
     mult = c.mult;
     const gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
@@ -1070,10 +1143,26 @@
     const peligro = enemy.chasing || dEnemyP < 230;
     if (now >= squadAlerta) squadPos = null;                                      // se alejó: todos vuelven contigo
     // Si el monstruo va a por TI, el aviso eres tú: vienen a cubrirte a toda prisa
-    if (enemy.chasing && !player.hidden && now >= enemy.fleeUntil) { squadPos = { x: player.x, y: player.y }; squadAlerta = Math.max(squadAlerta, now + 1800); }
+    if (enemy.chasing && !player.hidden && now >= enemy.fleeUntil && escuadraModo === "conmigo") { squadPos = { x: player.x, y: player.y }; squadAlerta = Math.max(squadAlerta, now + 1800); }
 
     for (const c of compas) {
       if (!c.alive) continue;
+
+      // ---- Derribado: no puede hacer nada, se arrastra y pide ayuda
+      if (c.estado === "derribado") {
+        if (now >= c.sangraAt) { c.sangraAt = now + 900; spawnBlood(c.x, c.y, 1); }
+        if (Math.random() < 0.012) dice(c, ["¡Ayuda!", "No me dejes…", "¡Aquí!"][(Math.random() * 3) | 0], true);
+        if (dist(enemy.x, enemy.y, c.x, c.y) < 26 && now >= enemy.fleeUntil) {     // si lo alcanza, se lo lleva
+          arrastrar(c, now); continue;
+        }
+        if (now >= c.estadoHasta) {                                                 // se te acabó el tiempo
+          c.alive = false; c.estado = "seguir"; spawnBlood(c.x, c.y, 8);
+          player.sanity = Math.max(0, player.sanity - 18);
+          if (stats) stats.caidos++;
+          flashMsg(c.name + " no aguantó."); updateHud();
+        }
+        continue;
+      }
 
       // ---- Lo está arrastrando: no puede hacer nada, solo la linterna sacudiéndose
       if (c.estado === "arrastrado") {
@@ -1088,6 +1177,7 @@
           const pn = Math.max(-1, Math.min(1, (c.x - player.x) / 300));
           growl(0.9, pn); noise(0.55, 0.28, "bandpass", 520, pn);
           player.sanity = Math.max(0, player.sanity - 16);
+          if (stats) stats.caidos++;
           flashMsg("Se llevó a " + c.name + "… quizá siga vivo abajo."); updateHud();
         }
         continue;
@@ -1098,15 +1188,42 @@
       // Su linterna gasta pila al mismo ritmo que la tuya, y solo mientras está encendida
       if (player.light && c.batt > 0) {
         c.batt = Math.max(0, c.batt - diff.batt * dtSec);
-        if (c.batt <= 0 && !c.sinPila) { c.sinPila = true; flashMsg("A " + c.name + " se le agotó la pila — apenas alumbra"); beep(170, 0.1, "square", 0.1); }
+        if (c.batt <= 0 && !c.sinPila) { c.sinPila = true; flashMsg("A " + c.name + " se le agotó la pila — apenas alumbra"); beep(170, 0.1, "square", 0.1); dice(c, "Me quedé sin pila", true); }
+        else if (c.batt < 22 && Math.random() < 0.004) dice(c, "Casi sin pila…");
       }
       const dp = dist(c.x, c.y, player.x, player.y);
       const cojera = herido ? 0.82 : 1;
+      if (herido && Math.random() < 0.004) dice(c, c.rol === "miedoso" ? "Estoy fatal, tío…" : "Aguanto, sigue");
+      if (c.ammo === 0 && Math.random() < 0.0035) dice(c, "¡Sin balas!");
+      if (!enemy.chasing && !squadPos && Math.random() < 0.0012) {
+        const amb = c.rol === "miedoso" ? ["Esto no me gusta nada", "¿Oíste eso?", "No te alejes, ¿eh?"]
+                  : c.rol === "valiente" ? ["Despejado por aquí", "Yo voy delante", "Seguimos"]
+                  : ["Te cubro", "Ojo a las esquinas", "Atento"];
+        dice(c, amb[(Math.random() * amb.length) | 0]);
+      }
+      // Si lo ve pegado a tu espalda, te avisa
+      if (!player.hidden && dist(enemy.x, enemy.y, player.x, player.y) < 190 && hasLineOfSight(c.x, c.y, enemy.x, enemy.y) && Math.random() < 0.02) {
+        const rel = Math.atan2(enemy.y - player.y, enemy.x - player.x) - player.face;
+        const a = Math.atan2(Math.sin(rel), Math.cos(rel));
+        dice(c, Math.abs(a) > 2.2 ? "¡A TU ESPALDA!" : a < -0.8 ? "¡A tu izquierda!" : a > 0.8 ? "¡A tu derecha!" : "¡De frente!", true);
+      }
+
+      // ---- POSICIÓN: aguantan donde les dijiste (pero si el lío es ahí al lado, sí acuden)
+      if (c.estado === "posicion") {
+        if (escuadraModo !== "esperar" || !esperaPos) { c.estado = "seguir"; c.path = []; c.repathT = 0; }
+        else {
+          const dPos = dist(c.x, c.y, esperaPos.x, esperaPos.y);
+          if (dPos > 34 + c.slot * 14) compaVa(c, esperaPos.x, esperaPos.y, 1.15 * cojera * c.vel, dt);
+          else { c.path = []; c.face = (c.slot - 1) * 2.1 + Math.sin(now / 900 + c.fase) * 0.7; }   // cubren en abanico
+          if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; }
+        }
+      }
 
       // ---- AUXILIO: uno está en problemas y todos van para allá
-      if (squadPos && c.estado !== "auxilio" && dist(c.x, c.y, squadPos.x, squadPos.y) < 420 && dp < 400) { c.estado = "auxilio"; c.path = []; c.repathT = 0; c.destino = squadPos; }
+      const radioAviso = escuadraModo === "esperar" ? 170 : 420;
+      if (squadPos && c.estado !== "auxilio" && c.estado !== "derribado" && dist(c.x, c.y, squadPos.x, squadPos.y) < radioAviso && (escuadraModo === "esperar" || dp < 400)) { c.estado = "auxilio"; c.path = []; c.repathT = 0; c.destino = squadPos; }
       if (c.estado === "auxilio") {
-        if (!squadPos || dp > 420) { c.estado = "seguir"; c.path = []; c.repathT = 0; }   // se acabó, o te estás quedando solo
+        if (!squadPos || (escuadraModo === "conmigo" && dp > 420)) { c.estado = escuadraModo === "esperar" ? "posicion" : "seguir"; c.path = []; c.repathT = 0; }
         else {
           const falta = compaVa(c, squadPos.x, squadPos.y, 2.05 * cojera, dt);
           if (falta < 54) { c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x); c.path = []; }   // ya está ahí: encara al monstruo
@@ -1116,7 +1233,7 @@
 
       // ---- RECONOCIMIENTO: de uno en uno, se asoma a un rincón cercano y vuelve
       if (c.estado === "explorar") {
-        if (peligro || !c.destino || dp > 240) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }   // con peligro sí aprieta
+        if (peligro || !c.destino || dp > 240 || escuadraModo === "esperar") { c.estado = escuadraModo === "esperar" ? "posicion" : "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
         else if (now >= c.estadoHasta) { c.estado = "volver"; c.destino = null; c.path = []; c.repathT = 0; }
         else {
           const falta = compaVa(c, c.destino.x, c.destino.y, 1.0 * cojera, dt);        // va andando, sin prisa
@@ -1140,41 +1257,41 @@
 
       // ---- VOLVER: se reincorpora a la formación andando, sin carreras
       if (c.estado === "volver") {
-        if (peligro || squadPos || player.sprinting || dp > 300) { c.estado = "seguir"; c.path = []; c.repathT = 0; }   // si hay lío o te largas, ya aprieta
+        if (peligro || squadPos || player.sprinting || dp > 300 || escuadraModo === "esperar") { c.estado = escuadraModo === "esperar" ? "posicion" : "seguir"; c.path = []; c.repathT = 0; }
         else if (dp <= 46 + c.slot * 13) { c.estado = "seguir"; c.path = []; c.repathT = 0; }
         else { compaVa(c, player.x, player.y, 1.0 * cojera, dt); c.face += (c.slot - 1) * 0.42; if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; } }
       }
 
       // ---- SEGUIR: la formación de siempre
       if (c.estado === "seguir") {
-        const pegados = enemy.chasing ? 34 : 46;                                   // con el monstruo encima se cierran contigo
+        const pegados = (enemy.chasing ? 34 : 46) + c.sep;        // el valiente se adelanta, el miedoso se queda atrás
         if (dp > pegados + c.slot * 13) {
           // van a TU ritmo: si esprintas, esprintan; y si se han quedado atrás, aprietan
           const base = player.sprinting ? SPRINT_MULT : 1.04;
           // Andando no pasan de un trote (x1,45): si no, cruzan la pantalla y parece un salto
           const tope = player.sprinting ? 1.95 : 1.45;
           const alcance = Math.min(tope, dp > 240 ? 1.95 : dp > 170 ? 1.6 : dp > 110 ? 1.3 : 1.1);
-          compaVa(c, player.x, player.y, base * alcance * cojera, dt); c.face += (c.slot - 1) * 0.42;
+          compaVa(c, player.x, player.y, base * alcance * cojera * c.vel, dt); c.face += (c.slot - 1) * 0.42;
         }
         else {
           c.path = [];
           c.face = player.face + (c.slot - 1) * 1.15 + Math.sin(now / 950 + c.fase) * 0.5;   // en abanico: izquierda, frente y derecha
           // si todo está tranquilo, UNO se adelanta a revisar
-          if (!peligro && !squadPos && now >= exploraAt && !compas.some(o => o.alive && o.estado === "explorar")) {
+          if (!peligro && !squadPos && now >= exploraAt && !compas.some(o => o.alive && o.estado === "explorar") && Math.random() < c.explora * 0.5) {
             const d = puntoDeReconocimiento();
-            if (d) { c.estado = "explorar"; c.destino = d; c.estadoHasta = now + 5200; c.path = []; c.repathT = 0; }
+            if (d) { c.estado = "explorar"; c.destino = d; c.estadoHasta = now + 5200; c.path = []; c.repathT = 0; dice(c, "Voy a echar un ojo"); }
             exploraAt = now + 7000 + Math.random() * 6000;
           }
         }
       }
       // 2) Si el monstruo está a tiro y lo ven, disparan solos
       const de = dist(c.x, c.y, enemy.x, enemy.y);
-      if (c.ammo > 0 && de < 190 && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
+      if (c.ammo > 0 && de < c.alcance && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
         c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x);
-        c.ammo--; c.shootAt = now + (herido ? 900 : 540) + Math.random() * 380; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
-        fireBullet(c.x, c.y, c.face + (Math.random() - 0.5) * 0.16, c.name);
+        c.ammo--; c.shootAt = now + ((herido ? 900 : 540) + Math.random() * 380) * c.cadencia; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
+        fireBullet(c.x, c.y, c.face + (Math.random() - 0.5) * c.punteria, c.name);
         gunshot(c.x, c.y, Math.max(-1, Math.min(1, (c.x - player.x) / 260)));
-        if (!squadPos) flashMsg(c.name + " lo tiene a la vista — ¡disparando!");
+        if (!squadPos) { flashMsg(c.name + " lo tiene a la vista — ¡disparando!"); dice(c, c.rol === "miedoso" ? "¡Ahí está! ¡ayuda!" : "¡Lo tengo!", true); }
         squadAlerta = now + 6000; squadPos = { x: c.x, y: c.y };               // el que lo ve llama a los demás
       }
       // 3) No se amontonan: si dos quedan pegados, se separan
@@ -1229,6 +1346,7 @@
       player.hp = Math.max(0, Math.round(player.hp) - 34); player.golpeAt = now + 900; player.dmgUntil = now + 320;
       player.sanity = Math.max(0, player.sanity - 12); flashWhiteUntil = now + 70;
       if (player.hp <= 0) { lose(); return; }
+      if (stats) stats.golpes++;
       flashMsg("¡Te reventó encima! Vida " + player.hp + "%"); updateVida();
     }
     for (const c of compas) {
@@ -1271,7 +1389,7 @@
         if (isWall(b.x, b.y)) { b.life = 0; noise(0.05, 0.1, "highpass", 2200, Math.max(-1, Math.min(1, (b.x - player.x) / 260))); break; }
         let pop = null;
         for (const m of minis) if (!m.muerto && dist(b.x, b.y, m.x, m.y) < MINI_R + 4) { pop = m; break; }
-        if (pop) { b.life = 0; pop.activo = true; reventar(pop, now); break; }   // un tiro y revienta
+        if (pop) { b.life = 0; pop.activo = true; if (stats) stats.minis++; reventar(pop, now); break; }   // un tiro y revienta
         if (dist(b.x, b.y, enemy.x, enemy.y) < 15) {
           b.life = 0; enemy.hits++; enemy.hurtUntil = now + 220;
           const embiste = !!enemy.objetivo && now < enemy.objetivoHasta;
@@ -1280,7 +1398,7 @@
           spawnBlood(enemy.x, enemy.y, 3);
           const pn = Math.max(-1, Math.min(1, (enemy.x - player.x) / 260));
           growl(0.7, pn); noise(0.12, 0.2, "bandpass", 520, pn);
-          if (b.from === "player") flashMsg("¡Le diste! Retrocede…");
+          if (b.from === "player") { flashMsg("¡Le diste! Retrocede…"); if (stats) stats.aciertos++; }
           break;
         }
       }
@@ -1306,7 +1424,7 @@
       if (sprinting) { player.stamina = Math.max(0, player.stamina - 32 * dtSec); runSprinted = true; }
       else player.stamina = Math.min(100, player.stamina + 15 * dtSec);
       player.sprinting = sprinting;
-      const sp = PLAYER_SPEED * (sprinting ? SPRINT_MULT : 1) * dt;
+      const sp = PLAYER_SPEED * (sprinting ? SPRINT_MULT : 1) * (evento.id === "inundado" ? 0.78 : 1) * dt;
       tryMove(player, player.x + ix * sp, player.y + iy * sp, PLAYER_R);
     } else { player.vx = 0; player.vy = 0; player.stamina = Math.min(100, player.stamina + 20 * dtSec); }
 
@@ -1324,7 +1442,8 @@
     }
 
     // Focos de pared (parpadean / se prenden y apagan)
-    for (const w of wallLights) if (now >= w.toggleAt) {
+    if (evento.id === "apagon" && !generator.on) { for (const w of wallLights) w.on = false; }
+    else for (const w of wallLights) if (now >= w.toggleAt) {
       if (generator.on) {        // CON energía: siguen los apagones, pero bastante menos seguidos
         if (w.flick) { w.on = Math.random() < 0.78; w.toggleAt = now + 400 + Math.random() * 1400; }
         else { w.on = Math.random() < 0.88; w.toggleAt = now + 2000 + Math.random() * 4500; }
@@ -1356,6 +1475,8 @@
     nearGen = !generator.on && dist(player.x, player.y, generator.x, generator.y) < 36;
     nearControl = !!controlPanel && dist(player.x, player.y, controlPanel.x, controlPanel.y) < 40;
     nearPreso = !!preso && dist(player.x, player.y, preso.x, preso.y) < 40;
+    caido = compas.find(c => c.alive && c.estado === "derribado") || null;
+    nearCaido = !!caido && dist(player.x, player.y, caido.x, caido.y) < 40;
     updatePrompt();
 
     if (!player.hidden) {
@@ -1365,11 +1486,12 @@
         const vivos = compas.filter(c => c.alive);
         for (const c of vivos) { c.batt = Math.min(100, c.batt + 30); c.sinPila = false; }   // repartes con los compas
         beep(520, 0.08, "square", 0.18); setTimeout(() => beep(760, 0.1, "square", 0.18), 70);
+        if (stats) stats.pilas++;
         flashMsg(vivos.length ? "Pila: +45% tuya y +30% a cada compa" : "Pila (+linterna)"); updateBatt(); }
       for (const b of boots) if (!b.taken && dist(player.x, player.y, b.x, b.y) < PLAYER_R + 11) { b.taken = true; player.hasBoots = true; document.getElementById("stamWrap").style.display = "flex"; beep(300, 0.1, "square", 0.18); setTimeout(() => beep(450, 0.12, "square", 0.18), 80); flashMsg("¡Botas! Mantén Shift para correr"); }
       for (const dp of decoyPickups) if (!dp.taken && dist(player.x, player.y, dp.x, dp.y) < PLAYER_R + 11) { dp.taken = true; player.decoys += 2; beep(640, 0.09, "square", 0.16); flashMsg("Señuelos +2 (Q para lanzar)"); updateHud(); }
       for (const rd of radars) if (!rd.taken && dist(player.x, player.y, rd.x, rd.y) < PLAYER_R + 11) { rd.taken = true; player.radars++; beep(900, 0.08, "sine", 0.16); flashMsg("Radar +1 (R para ver al monstruo)"); updateHud(); }
-      for (const a of ammoPickups) if (!a.taken && dist(player.x, player.y, a.x, a.y) < PLAYER_R + 11) { a.taken = true; player.ammo += AMMO_PER_PICK; beep(600, 0.06, "square", 0.14); setTimeout(() => beep(820, 0.07, "square", 0.13), 70); flashMsg("Munición +" + AMMO_PER_PICK + " (" + player.ammo + " balas)"); updateHud(); }
+      for (const a of ammoPickups) if (!a.taken && dist(player.x, player.y, a.x, a.y) < PLAYER_R + 11) { a.taken = true; player.ammo += AMMO_PER_PICK; beep(600, 0.06, "square", 0.14); setTimeout(() => beep(820, 0.07, "square", 0.13), 70); if (stats) stats.muni++; flashMsg("Munición +" + AMMO_PER_PICK + " (" + player.ammo + " balas)"); updateHud(); }
       for (const m of mapItems) if (!m.taken && dist(player.x, player.y, m.x, m.y) < PLAYER_R + 11) { m.taken = true; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) explored[y][x] = true; beep(700, 0.09, "sine", 0.16); setTimeout(() => beep(1000, 0.1, "sine", 0.14), 90); flashMsg("Mapa del piso: pasillos revelados"); }
       for (const n of notes) if (!n.taken && dist(player.x, player.y, n.x, n.y) < PLAYER_R + 10) { n.taken = true; notesFound++; document.getElementById("noteCount").textContent = notesFound; beep(330, 0.12, "sine", 0.14); showNote(n.text); }
       for (const tr of traps) if (!tr.triggered && dist(player.x, player.y, tr.x, tr.y) < 16) { tr.triggered = true; player.stunUntil = now + 900; enemy.alertUntil = now + 4500; enemy.lureUntil = 0; enemy.chasing = true; enemy.repathT = 0; player.sanity = Math.max(0, player.sanity - 12); beep(140, 0.25, "sawtooth", 0.3); setTimeout(() => beep(90, 0.3, "sawtooth", 0.25), 120); flashMsg("¡TRAMPA! El ruido lo atrajo"); }
@@ -1476,12 +1598,12 @@
           flashMsg("¡Hirió a " + c.name + "! (" + c.hp + "%)");
         } else if (Math.random() < 0.5) {                      // a veces se lo lleva a rastras hacia la oscuridad
           arrastrar(c, now);
-        } else {                                               // y a veces cae ahí mismo
-          c.alive = false; c.capturado = true;
-          enemy.fleeUntil = now + 2600; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;
-          enemy.goteaHasta = now + 26000; enemy.goteaAt = 0;        // se va herido del forcejeo
-          player.sanity = Math.max(0, player.sanity - 22);
-          flashMsg("¡Se llevó a " + c.name + "!");
+        } else {                                               // malherido en el suelo: corre a levantarlo
+          c.estado = "derribado"; c.estadoHasta = now + 20000; c.path = []; c.repathT = 0; c.sangraAt = 0;
+          enemy.fleeUntil = now + 2000; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;
+          player.sanity = Math.max(0, player.sanity - 14);
+          dice(c, "¡Ayuda!", true);
+          flashMsg("¡" + c.name + " está en el suelo! Ve a levantarlo");
         }
         updateHud();
         break;
@@ -1497,6 +1619,7 @@
       player.stunUntil = now + 320; player.sanity = Math.max(0, player.sanity - 18);
       enemy.fleeUntil = now + 1200; enemy.chasing = false; enemy.path = []; enemy.repathT = 0;
       growl(0.9, 0); noise(0.35, 0.26, "bandpass", 620, 0);
+      if (stats) stats.golpes++;
       flashMsg("¡Te alcanzó! Vida " + player.hp + "%");
       updateVida();
     }
@@ -1725,6 +1848,12 @@
     for (const k of masterKeys) if (!k.taken) drawKey(k, t, true);
 
     drawEnemy(enemy.x, enemy.y, t);
+    if (escuadraModo === "esperar" && esperaPos) {                           // el punto que cubren
+      const t2 = now / 320;
+      ctx.save(); ctx.strokeStyle = "rgba(230,185,95," + (0.3 + Math.sin(t2) * 0.25).toFixed(2) + ")"; ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(esperaPos.x, esperaPos.y, 30, 0, 7); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+    }
     if (preso) drawPreso(preso, now);
     for (const m of minis) if (!m.muerto) drawMini(m, now);
     for (const c of compas) if (c.alive) drawCompa(c, now);
@@ -1734,6 +1863,8 @@
 
     drawLighting(shx, shy, now);
 
+    if (evento.id === "niebla") { ctx.fillStyle = "rgba(150,152,146,0.14)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    if (evento.id === "inundado") { ctx.fillStyle = "rgba(40,78,110,0.16)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (now < flashWhiteUntil) { ctx.fillStyle = "rgba(255,245,230,0.5)"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
     if (now < lightningUntil) { ctx.fillStyle = "rgba(210,225,255," + (0.4 + Math.random() * 0.25).toFixed(3) + ")"; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 
@@ -1764,7 +1895,8 @@
     const glitch = now < glitchUntil ? glitchLevel : 1;
     const br = settings.bright;
     const battN = player.battery / 100;
-    const coneVision = BASE_VISION * 1.22 * flick * glitch * br * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18);
+    const nieb = evento.id === "niebla" ? 0.62 : 1;
+    const coneVision = BASE_VISION * 1.22 * flick * glitch * br * (0.4 + 0.6 * battN) * (1 - fearPulse * 0.18) * nieb;
     const hideVision = BASE_VISION * 0.82 * flick * br;
     const ambR = AMBIENT_R * br;
 
@@ -1785,7 +1917,7 @@
     }
     const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
     // Cada compa lleva SU linterna: mismo cono que la tuya, algo más corto
-    const compaCono = BASE_VISION * 1.02 * flick * br * (1 - fearPulse * 0.12);
+    const compaCono = BASE_VISION * 1.02 * flick * br * (1 - fearPulse * 0.12) * nieb;
     const compaHalf = CONE_HALF * 0.92;
     for (const c of compas) {
       if (!c.alive) continue;
@@ -1861,6 +1993,21 @@
     ctx.fillText(c.name, x, y - PLAYER_R - 6); ctx.textAlign = "left";
   }
   function drawCompa(c, now) {
+    if (c.estado === "derribado") {                                          // tumbado, sangrando
+      const x = c.x, y = c.y, pal = 0.45 + Math.sin(now / 240) * 0.45;
+      ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 5, 13, 6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = c.dark; ctx.beginPath(); ctx.ellipse(x, y, 13, 7.5, 0.3, 0, 7); ctx.fill();
+      ctx.fillStyle = c.color; ctx.beginPath(); ctx.ellipse(x - 2, y - 1, 7, 4.5, 0.3, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(255,90,80," + pal.toFixed(2) + ")"; ctx.font = "bold 11px Courier New"; ctx.textAlign = "center";
+      ctx.fillText("+", x, y - 14); ctx.textAlign = "left";
+      if (now < c.diceHasta && c.dice) {
+        ctx.font = "9px Courier New"; ctx.textAlign = "center";
+        const w = ctx.measureText(c.dice).width + 10;
+        ctx.fillStyle = "rgba(12,14,18,0.82)"; ctx.fillRect(x - w / 2, y - 35, w, 12);
+        ctx.fillStyle = "#ffb0a4"; ctx.fillText(c.dice, x, y - 26); ctx.textAlign = "left";
+      }
+      return;
+    }
     const x = c.x, y = c.y, r = PLAYER_R - 1.5;
     ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(x, y + 7, 10, 4.5, 0, 0, 7); ctx.fill();
     const sangra = now < c.dmgUntil;
@@ -1875,6 +2022,15 @@
       ctx.beginPath(); ctx.arc(x + Math.cos(c.face) * (r - 1), y + Math.sin(c.face) * (r - 1), 1.3 + pb * 0.6, 0, 7); ctx.fill();
     }
     if (now < c.hurtUntil) { ctx.fillStyle = "rgba(255,226,150,0.95)"; ctx.beginPath(); ctx.arc(gx, gy, 4.5, 0, 7); ctx.fill(); }   // fogonazo
+    if (now < c.diceHasta && c.dice) {                                        // bocadillo
+      ctx.font = "9px Courier New"; ctx.textAlign = "center";
+      const w = ctx.measureText(c.dice).width + 10, by = y - r - 20 - c.slot * 9;
+      ctx.fillStyle = "rgba(12,14,18,0.82)"; ctx.fillRect(x - w / 2, by - 9, w, 12);
+      ctx.strokeStyle = "rgba(190,200,215,0.35)"; ctx.lineWidth = 1; ctx.strokeRect(x - w / 2 + 0.5, by - 8.5, w - 1, 11);
+      ctx.fillStyle = "#dfe6ef"; ctx.fillText(c.dice, x, by);
+      ctx.fillStyle = "rgba(12,14,18,0.82)"; ctx.beginPath(); ctx.moveTo(x - 3, by + 3); ctx.lineTo(x + 3, by + 3); ctx.lineTo(x, by + 7); ctx.fill();
+      ctx.textAlign = "left";
+    }
     const ny = y - r - 5 - c.slot * 9;
     ctx.fillStyle = c.hp <= 50 ? "rgba(224,106,90,0.9)" : "rgba(220,230,240,0.7)"; ctx.font = "9px Courier New"; ctx.textAlign = "center";
     ctx.fillText(c.name, x, ny); ctx.textAlign = "left";                      // escalonados: no se pisan al ir juntos
@@ -2185,14 +2341,24 @@
   function updateSan() { const v = Math.max(0, player.sanity); elSan.style.width = v + "%"; elSan.style.background = v < 30 ? "linear-gradient(90deg,#7a2e8a,#c04bd0)" : "linear-gradient(90deg,#5a4a9a,#9a86d0)"; elStam.style.width = player.stamina + "%"; elStam.style.background = "linear-gradient(90deg,#8a6a2a,#d0b060)"; }
   const elAction = document.getElementById("actionBtn");
   let accionModo = null;
+  const elOrden = document.getElementById("ordenBtn");
+  let ordenModo = null;
+  function updateOrdenBtn() {
+    if (escuadraModo === ordenModo) return;
+    ordenModo = escuadraModo;
+    elOrden.classList.toggle("esperando", escuadraModo === "esperar");
+    elOrden.innerHTML = escuadraModo === "esperar" ? "COMPAS<br><b>CUBRIENDO</b>" : "COMPAS<br><b>CONMIGO</b>";
+  }
   function updateActionBtn() {
+    updateOrdenBtn();
     const ctx2 = contextAction();
     const modo = ctx2 ? "accion" : "disparo";
     const txt = ctx2 ? "ACCIÓN" : "DISPARAR";
     if (modo !== accionModo) { accionModo = modo; elAction.classList.toggle("shootMode", modo === "disparo"); }
     elAction.innerHTML = ctx2 ? "ACCIÓN" : ("DISPARAR<br><b>" + player.ammo + "</b>");
   }
-  function updatePrompt() { updateActionBtn(); if (nearPreso && !player.hidden) { elPrompt.innerHTML = "<b>E</b> rescatar a " + preso.compa.name; elPrompt.classList.add("show"); }
+  function updatePrompt() { updateActionBtn(); if (nearCaido && !player.hidden) { const seg = Math.ceil((caido.estadoHasta - performance.now()) / 1000); elPrompt.innerHTML = "<b>E</b> levantar a " + caido.name + " <b>" + Math.max(0, seg) + "s</b>"; elPrompt.classList.add("show"); }
+    else if (nearPreso && !player.hidden) { elPrompt.innerHTML = "<b>E</b> rescatar a " + preso.compa.name; elPrompt.classList.add("show"); }
     else if (nearGen && !player.hidden) { elPrompt.innerHTML = "<b>E</b> activar generador"; elPrompt.classList.add("show"); }
     else if (nearControl && !player.hidden) { const esp = Math.ceil((controlReadyAt - performance.now()) / 1000); elPrompt.innerHTML = esp > 0 ? "cámaras reiniciando… <b>" + esp + "s</b>" : "<b>E</b> ver las cámaras"; elPrompt.classList.add("show"); } else if (nearLocker && !player.hidden) { elPrompt.innerHTML = "<b>E</b> esconderte"; elPrompt.classList.add("show"); } else if (player.hidden) { elPrompt.innerHTML = "<b>E</b> salir del armario"; elPrompt.classList.add("show"); } else elPrompt.classList.remove("show"); }
   function flashMsg(txt) { elMsg.textContent = txt; elMsg.classList.add("show"); clearTimeout(msgTimer); msgTimer = setTimeout(() => elMsg.classList.remove("show"), 1900); }
@@ -2370,11 +2536,35 @@
       flashMsg("Piso " + (floorIdx + 1) + ": " + fl.name);
     }, scenes);
   }
+  // 14) Resumen de la partida
+  function pintaResumen(donde) {
+    const el = document.getElementById(donde); if (!el) return;
+    const st = stats || nuevasStats();
+    const vivos = compas.filter(c => c.alive).length;
+    const pct = st.disparos ? Math.round(st.aciertos / st.disparos * 100) : 0;
+    const fila = (k, v) => "<tr><td>" + k + "</td><td>" + v + "</td></tr>";
+    el.innerHTML = "<table>" +
+      "<tr><td class='tit' colspan='2'>RESUMEN</td></tr>" +
+      fila("⏱️ Tiempo", fmt(elapsed)) +
+      fila("🏢 Pisos recorridos", Math.min(st.pisos, FLOORS.length) + "/" + FLOORS.length) +
+      fila("🔑 Llaves del último piso", collected + "/" + KEY_COUNT) +
+      fila("👥 Compas que siguen contigo", vivos + "/3") +
+      (st.caidos ? fila("💀 Compas perdidos", st.caidos) : "") +
+      (st.levantados ? fila("🩹 Compas levantados", st.levantados) : "") +
+      (st.rescatados ? fila("🔓 Compas rescatados", st.rescatados) : "") +
+      fila("🔫 Disparos · aciertos", st.disparos + " · " + st.aciertos + " (" + pct + "%)") +
+      (st.minis ? fila("🫧 Minis reventados", st.minis) : "") +
+      fila("🩸 Golpes recibidos", st.golpes) +
+      fila("📜 Notas encontradas", notesFound + "/" + notesPlaced) +
+      fila("🔋 Pilas · 📦 munición", st.pilas + " · " + st.muni) +
+      (st.eventos.length ? fila("🌫️ Pisos raros", st.eventos.join(", ")) : "") +
+      "</table>";
+  }
   function lose() {
     running = false; fearPulse = 1; clearSave();
     beep(70, 0.6, "sawtooth", 0.35); setTimeout(() => beep(42, 0.9, "sawtooth", 0.3), 80); noise(0.6, 0.22, "bandpass", 850);
     document.getElementById("overText").textContent = "Caíste en el piso " + (floorIdx + 1) + " (" + FLOORS[floorIdx].name + "). Reuniste " + collected + " de " + KEY_COUNT + " llaves.";
-    playCinematic(() => { hideAllScreens(); overScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, CINE_LOSE);
+    playCinematic(() => { hideAllScreens(); pintaResumen("overResumen"); overScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, CINE_LOSE);
   }
   function win() {
     running = false; clearSave();
@@ -2393,7 +2583,7 @@
     txt += (newRecord ? "<br><b style='color:#7fa'>¡NUEVO RÉCORD!</b>" : (b != null ? "<br>Mejor: " + fmt(b) : ""));
     if (newAch.length) txt += "<br><span style='color:#ffcf4d'>Logro(s): " + newAch.join(", ") + "</span>";
     document.getElementById("winText").innerHTML = txt;
-    playCinematic(() => { hideAllScreens(); winScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, allNotes ? CINE_WIN_SECRET : CINE_WIN);
+    playCinematic(() => { hideAllScreens(); pintaResumen("winResumen"); winScreen.classList.remove("hidden"); document.getElementById("hud").style.display = "none"; }, allNotes ? CINE_WIN_SECRET : CINE_WIN);
   }
   document.getElementById("startBtn").addEventListener("click", startBtnAction);
   document.getElementById("retryBtn").addEventListener("click", startGame);
