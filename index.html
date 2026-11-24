@@ -424,7 +424,7 @@
   const nuevasStats = () => ({ disparos: 0, aciertos: 0, minis: 0, golpes: 0, caidos: 0, levantados: 0, rescatados: 0, pilas: 0, muni: 0, pisos: 1, eventos: [] });
   let escuadraModo = "conmigo", esperaPos = null;   // órdenes al escuadrón
   let preso = null, nearPreso = false, caido = null, nearCaido = false;   // compa derribado, esperando que lo levantes   // el compa que se llevó, esperando rescate en el piso siguiente   // embestidas y descanso entre zarpazos a compas   // escuadrón: aviso de 'uno está en problemas' y turno de reconocimiento
-  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, rol: d.rol, sep: d.sep, vel: d.vel, alcance: d.alcance, cadencia: d.cadencia, punteria: d.punteria, explora: d.explora, agallas: d.agallas, dice: null, diceHasta: 0, hablaAt: 0, x: 0, y: 0, face: 0, alive: true, ammo: d.balas, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0, capturado: false, sangraAt: 0 });
+  const mkCompa = d => ({ name: d.name, color: d.color, dark: d.dark, rol: d.rol, sep: d.sep, vel: d.vel, alcance: d.alcance, cadencia: d.cadencia, punteria: d.punteria, explora: d.explora, agallas: d.agallas, dice: null, diceHasta: 0, hablaAt: 0, x: 0, y: 0, face: 0, alive: true, ammo: d.balas, shootAt: 0, path: [], repathT: 0, slot: 0, hurtUntil: 0, fase: Math.random() * 6.28, batt: 100, sinPila: false, hp: 100, golpeAt: 0, dmgUntil: 0, pgx: -1, pgy: -1, sinRuta: false, sinRutaDesde: 0, mult: 1, faceObj: 0, estado: "seguir", estadoHasta: 0, destino: null, gritoAt: 0, capturado: false, sangraAt: 0 });
   let keys = [], batteries = [], notes = [], traps = [], lockers = [], decoyPickups = [], masterKeys = [], boots = [], radars = [], mapItems = [], decoysActive = [], bloodDecals = [], wallLights = [];
   let weather = { raining: false, intensity: 0 }, rainDrops = [], lightningUntil = 0, radarUntil = 0, trackUntil = 0;
   const N_AMMO = 3, AMMO_PER_PICK = 6, COMPA_AMMO = 8, BULLET_SPEED = 11, BULLET_LIFE = 46;
@@ -461,6 +461,7 @@
     diff = DIFF[diffName];
     generateMaze();
     buildTileAtlas(FLOORS[floorIdx].theme);   // texturas del escenario de este piso
+    pintarEscenario();                        // y el piso entero cacheado de una vez
     const p = cellCenter(1, 1);
     player.x = p.x; player.y = p.y; player.vx = 0; player.vy = 0; player.face = Math.PI / 4;
     player.hidden = false; player.stunUntil = 0; player.light = true; player.stepAt = 0; player.stamina = 100;
@@ -1099,7 +1100,7 @@
     }
     if (!c.path.length) {                                   // sin ruta: tira en línea recta y avisa
       const dx0 = tx - c.x, dy0 = ty - c.y, d0 = Math.hypot(dx0, dy0) || 1, sp0 = Math.min(PLAYER_SPEED * mult * dt, PASO_MAX, d0);
-      if (!solidAt(c.x + dx0 / d0 * sp0, c.y + dy0 / d0 * sp0)) { c.x += dx0 / d0 * sp0; c.y += dy0 / d0 * sp0; c.face = Math.atan2(dy0, dx0); }
+      if (!solidAt(c.x + dx0 / d0 * sp0, c.y + dy0 / d0 * sp0)) { c.x += dx0 / d0 * sp0; c.y += dy0 / d0 * sp0; c.faceObj = Math.atan2(dy0, dx0); }
       else c.sinRuta = true;
       return d0;
     }
@@ -1109,7 +1110,7 @@
     const nx = c.x + dx / d * sp, ny = c.y + dy / d * sp;
     if (!solidAt(nx, ny)) { c.x = nx; c.y = ny; } else { c.path = []; c.repathT = 0; }
     if (d <= sp) c.path.shift();
-    c.face = Math.atan2(dy, dx);
+    c.faceObj = Math.atan2(dy, dx);
     return dist(c.x, c.y, tx, ty);
   }
   // Un rincón cercano que valga la pena revisar: ni pegado a ti ni al otro lado del piso
@@ -1214,7 +1215,7 @@
         else {
           const dPos = dist(c.x, c.y, esperaPos.x, esperaPos.y);
           if (dPos > 34 + c.slot * 14) compaVa(c, esperaPos.x, esperaPos.y, 1.15 * cojera * c.vel, dt);
-          else { c.path = []; c.face = (c.slot - 1) * 2.1 + Math.sin(now / 900 + c.fase) * 0.7; }   // cubren en abanico
+          else { c.path = []; c.faceObj = (c.slot - 1) * 2.1 + Math.sin(now / 900 + c.fase) * 0.7; }   // cubren en abanico
           if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; }
         }
       }
@@ -1226,7 +1227,7 @@
         if (!squadPos || (escuadraModo === "conmigo" && dp > 420)) { c.estado = escuadraModo === "esperar" ? "posicion" : "seguir"; c.path = []; c.repathT = 0; }
         else {
           const falta = compaVa(c, squadPos.x, squadPos.y, 2.05 * cojera, dt);
-          if (falta < 54) { c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x); c.path = []; }   // ya está ahí: encara al monstruo
+          if (falta < 54) { c.faceObj = Math.atan2(enemy.y - c.y, enemy.x - c.x); c.path = []; }   // ya está ahí: encara al monstruo
           else if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; }              // no hay manera de llegar: no se queda plantado
         }
       }
@@ -1238,7 +1239,7 @@
         else {
           const falta = compaVa(c, c.destino.x, c.destino.y, 1.0 * cojera, dt);        // va andando, sin prisa
           if (c.sinRuta) { c.estado = "seguir"; c.destino = null; c.path = []; c.repathT = 0; }
-          else if (falta < 26) { c.path = []; c.face = (c.fase * 3) + now / 420; if (c.estadoHasta > now + 1500) c.estadoHasta = now + 1500; }  // barre el rincón
+          else if (falta < 26) { c.path = []; c.faceObj = (c.fase * 3) + now / 420; if (c.estadoHasta > now + 1500) c.estadoHasta = now + 1500; }  // barre el rincón
         }
       }
 
@@ -1259,7 +1260,7 @@
       if (c.estado === "volver") {
         if (peligro || squadPos || player.sprinting || dp > 300 || escuadraModo === "esperar") { c.estado = escuadraModo === "esperar" ? "posicion" : "seguir"; c.path = []; c.repathT = 0; }
         else if (dp <= 46 + c.slot * 13) { c.estado = "seguir"; c.path = []; c.repathT = 0; }
-        else { compaVa(c, player.x, player.y, 1.0 * cojera, dt); c.face += (c.slot - 1) * 0.42; if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; } }
+        else { compaVa(c, player.x, player.y, 1.0 * cojera, dt); c.faceObj += (c.slot - 1) * 0.42; if (c.sinRuta) { c.estado = "seguir"; c.path = []; c.repathT = 0; } }
       }
 
       // ---- SEGUIR: la formación de siempre
@@ -1271,11 +1272,11 @@
           // Andando no pasan de un trote (x1,45): si no, cruzan la pantalla y parece un salto
           const tope = player.sprinting ? 1.95 : 1.45;
           const alcance = Math.min(tope, dp > 240 ? 1.95 : dp > 170 ? 1.6 : dp > 110 ? 1.3 : 1.1);
-          compaVa(c, player.x, player.y, base * alcance * cojera * c.vel, dt); c.face += (c.slot - 1) * 0.42;
+          compaVa(c, player.x, player.y, base * alcance * cojera * c.vel, dt); c.faceObj += (c.slot - 1) * 0.42;
         }
         else {
           c.path = [];
-          c.face = player.face + (c.slot - 1) * 1.15 + Math.sin(now / 950 + c.fase) * 0.5;   // en abanico: izquierda, frente y derecha
+          c.faceObj = player.face + (c.slot - 1) * 1.15 + Math.sin(now / 950 + c.fase) * 0.5;   // en abanico: izquierda, frente y derecha
           // si todo está tranquilo, UNO se adelanta a revisar
           if (!peligro && !squadPos && now >= exploraAt && !compas.some(o => o.alive && o.estado === "explorar") && Math.random() < c.explora * 0.5) {
             const d = puntoDeReconocimiento();
@@ -1287,13 +1288,17 @@
       // 2) Si el monstruo está a tiro y lo ven, disparan solos
       const de = dist(c.x, c.y, enemy.x, enemy.y);
       if (c.ammo > 0 && de < c.alcance && now >= c.shootAt && hasLineOfSight(c.x, c.y, enemy.x, enemy.y)) {
-        c.face = Math.atan2(enemy.y - c.y, enemy.x - c.x);
+        c.face = c.faceObj = Math.atan2(enemy.y - c.y, enemy.x - c.x);   // apuntar sí es instantáneo
         c.ammo--; c.shootAt = now + ((herido ? 900 : 540) + Math.random() * 380) * c.cadencia; c.hurtUntil = now + 70;   // herido, le cuesta apuntar
         fireBullet(c.x, c.y, c.face + (Math.random() - 0.5) * c.punteria, c.name);
         gunshot(c.x, c.y, Math.max(-1, Math.min(1, (c.x - player.x) / 260)));
         if (!squadPos) { flashMsg(c.name + " lo tiene a la vista — ¡disparando!"); dice(c, c.rol === "miedoso" ? "¡Ahí está! ¡ayuda!" : "¡Lo tengo!", true); }
         squadAlerta = now + 6000; squadPos = { x: c.x, y: c.y };               // el que lo ve llama a los demás
       }
+      // Giro suave: antes pegaban saltos de 90° en un frame y parecía que temblaban
+      let dgir = c.faceObj - c.face; dgir = Math.atan2(Math.sin(dgir), Math.cos(dgir));
+      c.face += dgir * Math.min(1, dt / 60 * 9);
+
       // 3) No se amontonan: si dos quedan pegados, se separan
       for (const o of compas) {
         if (o === c || !o.alive || o.estado === "arrastrado") continue;
@@ -1631,6 +1636,25 @@
   // así el suelo y los muros se ven continuos en vez de bloques repetidos.
   const BIGN = 6, BIG = BIGN * TILE;
   let texFloor = null, texWallTop = null, texWallFace = null, wallAtlas = null, atlasTheme = null;
+  let mapaCanvas = null, mapaCtx = null;   // el escenario entero, pintado una sola vez por piso
+  // Degradados de luz pre-cocinados: crearlos en cada frame costaba lo suyo
+  const LUZ_PX = 160;
+  function sprLuz(stops) {
+    const c = document.createElement("canvas"); c.width = c.height = LUZ_PX * 2;
+    const g = c.getContext("2d"), gr = g.createRadialGradient(LUZ_PX, LUZ_PX, 0, LUZ_PX, LUZ_PX, LUZ_PX);
+    for (const [p, col] of stops) gr.addColorStop(p, col);
+    g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height); return c;
+  }
+  let sprAmb = null, sprCono = null, sprHalo = null, sprFoco = null, sprFocoOn = null, sprFogo = null;
+  function buildSprites() {
+    sprAmb    = sprLuz([[0, "rgba(120,120,130,0.85)"], [1, "rgba(0,0,0,0)"]]);
+    sprCono   = sprLuz([[0, "rgba(255,244,214,1)"], [0.55, "rgba(240,224,180,0.72)"], [1, "rgba(0,0,0,0)"]]);
+    sprHalo   = sprLuz([[0, "rgba(220,220,210,0.6)"], [1, "rgba(0,0,0,0)"]]);
+    sprFoco   = sprLuz([[0, "rgba(255,222,155,0.82)"], [0.55, "rgba(200,160,90,0.27)"], [1, "rgba(0,0,0,0)"]]);
+    sprFocoOn = sprLuz([[0, "rgba(255,222,155,0.82)"], [0.55, "rgba(208,168,98,0.36)"], [1, "rgba(0,0,0,0)"]]);
+    sprFogo   = sprLuz([[0, "rgba(255,243,210,0.95)"], [1, "rgba(0,0,0,0)"]]);
+  }
+  const pintaLuz = (spr, x, y, r, alpha) => { mctx.globalAlpha = alpha == null ? 1 : alpha; mctx.drawImage(spr, x - r, y - r, r * 2, r * 2); mctx.globalAlpha = 1; };
   let shadowTop = null, shadowLeft = null, shadowRight = null;
   function srnd(st) { st.s = (st.s * 1664525 + 1013904223) >>> 0; return st.s / 4294967296; }
   function rgb(r, g, b) { return "rgb(" + Math.max(0, Math.min(255, r | 0)) + "," + Math.max(0, Math.min(255, g | 0)) + "," + Math.max(0, Math.min(255, b | 0)) + ")"; }
@@ -1735,6 +1759,29 @@
       g.fillStyle = "#14171c"; g.fillRect(0, TILE - 6, BIG, 6);
     }
   }
+  // Pinta el piso entero en un lienzo aparte, una vez, al construirlo
+  function pintarEscenario() {
+    if (!mapaCanvas) { mapaCanvas = document.createElement("canvas"); mapaCtx = mapaCanvas.getContext("2d"); }
+    mapaCanvas.width = COLS * TILE; mapaCanvas.height = ROWS * TILE;
+    const g = mapaCtx;
+    g.clearRect(0, 0, mapaCanvas.width, mapaCanvas.height);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const px = x * TILE, py = y * TILE;
+      const sx = (((x % BIGN) + BIGN) % BIGN) * TILE, sy = (((y % BIGN) + BIGN) % BIGN) * TILE;
+      if (grid[y][x] === 1) {
+        const wUp = grid[y - 1] && grid[y - 1][x] === 1, wDn = grid[y + 1] && grid[y + 1][x] === 1;
+        const wLf = grid[y][x - 1] === 1, wRt = grid[y][x + 1] === 1;
+        const combo = (wUp ? 1 : 0) | (wRt ? 2 : 0) | (wDn ? 4 : 0) | (wLf ? 8 : 0);
+        g.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);
+        g.drawImage(wallAtlas, combo * TILE, (((x % BIGN) + BIGN) % BIGN) * TILE, TILE, TILE, px, py, TILE, TILE);
+      } else {
+        g.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);
+        if (grid[y - 1] && grid[y - 1][x] === 1) g.drawImage(shadowTop, px, py);
+        if (grid[y][x - 1] === 1) g.drawImage(shadowLeft, px, py);
+        if (grid[y][x + 1] === 1) g.drawImage(shadowRight, px + TILE - shadowRight.width, py);
+      }
+    }
+  }
   function buildTileAtlas(name) {
     if (!shadowTop) buildShadows();
     const TH = THEMES[name];
@@ -1789,25 +1836,13 @@
     ctx.save(); ctx.translate(-camX + shx, -camY + shy);
 
     const TH = THEMES[FLOORS[floorIdx].theme];
-    if (!texFloor || atlasTheme !== FLOORS[floorIdx].theme) buildTileAtlas(FLOORS[floorIdx].theme);
+    if (!texFloor || atlasTheme !== FLOORS[floorIdx].theme) { buildTileAtlas(FLOORS[floorIdx].theme); pintarEscenario(); }
+    if (!mapaCanvas) pintarEscenario();
     const x0 = Math.max(0, Math.floor(camX / TILE) - 1), y0 = Math.max(0, Math.floor(camY / TILE) - 1);
     const x1 = Math.min(COLS, Math.ceil((camX + VIEW_W) / TILE) + 1), y1 = Math.min(ROWS, Math.ceil((camY + VIEW_H) / TILE) + 1);
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      const px = x * TILE, py = y * TILE;
-      const sx = (((x % BIGN) + BIGN) % BIGN) * TILE, sy = (((y % BIGN) + BIGN) % BIGN) * TILE;
-      if (grid[y][x] === 1) {
-        const wUp = grid[y - 1] && grid[y - 1][x] === 1, wDn = grid[y + 1] && grid[y + 1][x] === 1;
-        const wLf = grid[y][x - 1] === 1, wRt = grid[y][x + 1] === 1;
-        const combo = (wUp ? 1 : 0) | (wRt ? 2 : 0) | (wDn ? 4 : 0) | (wLf ? 8 : 0);
-        ctx.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);          // suelo real bajo las esquinas
-        ctx.drawImage(wallAtlas, combo * TILE, (((x % BIGN) + BIGN) % BIGN) * TILE, TILE, TILE, px, py, TILE, TILE);
-      } else {
-        ctx.drawImage(texFloor, sx, sy, TILE, TILE, px, py, TILE, TILE);
-        if (grid[y - 1] && grid[y - 1][x] === 1) ctx.drawImage(shadowTop, px, py);
-        if (grid[y][x - 1] === 1) ctx.drawImage(shadowLeft, px, py);
-        if (grid[y][x + 1] === 1) ctx.drawImage(shadowRight, px + TILE - shadowRight.width, py);
-      }
-    }
+    // Antes se redibujaban ~400 baldosas cada frame; ahora es UNA copia del escenario ya pintado
+    if (mapaCanvas) ctx.drawImage(mapaCanvas, x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE,
+                                              x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE);
 
     // Sangre (eventos)
     for (const sp of salpicaduras) {                                        // lo que quedó en la pared
@@ -1873,7 +1908,9 @@
     if (weather.intensity > 0.02) {
       const n = (rainDrops.length * weather.intensity) | 0;
       ctx.save(); ctx.strokeStyle = "rgba(175,195,225," + (0.32 * weather.intensity).toFixed(3) + ")"; ctx.lineWidth = 1;
-      for (let i = 0; i < n; i++) { const d = rainDrops[i]; d.y += d.sp; d.x += d.sp * 0.28; if (d.y > VIEW_H) { d.y = -d.len; d.x = Math.random() * VIEW_W; } if (d.x > VIEW_W) d.x -= VIEW_W; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * 0.28, d.y - d.len); ctx.stroke(); }
+      ctx.beginPath();                                                    // todas las gotas en un solo trazo
+      for (let i = 0; i < n; i++) { const d = rainDrops[i]; d.y += d.sp; d.x += d.sp * 0.28; if (d.y > VIEW_H) { d.y = -d.len; d.x = Math.random() * VIEW_W; } if (d.x > VIEW_W) d.x -= VIEW_W; ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * 0.28, d.y - d.len); }
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -1904,17 +1941,13 @@
     mctx.setTransform(MQ, 0, 0, MQ, 0, 0);          // así el resto del código sigue usando coordenadas de pantalla
     mctx.globalCompositeOperation = "source-over"; mctx.fillStyle = "#000"; mctx.fillRect(0, 0, VIEW_W, VIEW_H);
     mctx.globalCompositeOperation = "lighter";
-    const ha = mctx.createRadialGradient(cx, cy, 0, cx, cy, ambR); ha.addColorStop(0, "rgba(120,120,130,0.85)"); ha.addColorStop(1, "rgba(0,0,0,0)");
-    mctx.fillStyle = ha; mctx.beginPath(); mctx.arc(cx, cy, ambR, 0, 7); mctx.fill();
+    if (!sprAmb) buildSprites();
+    pintaLuz(sprAmb, cx, cy, ambR);
     if (player.hidden) {
-      const gr = mctx.createRadialGradient(cx, cy, ambR * 0.4, cx, cy, hideVision);
-      gr.addColorStop(0, "rgba(255,250,235,1)"); gr.addColorStop(0.65, "rgba(230,224,210,0.6)"); gr.addColorStop(1, "rgba(0,0,0,0)");
-      mctx.fillStyle = gr; mctx.beginPath(); mctx.arc(cx, cy, hideVision, 0, 7); mctx.fill();
+      pintaLuz(sprCono, cx, cy, hideVision);
     } else if (player.light && coneVision > 1) {
       mctx.save(); mctx.beginPath(); mctx.moveTo(cx, cy); mctx.arc(cx, cy, coneVision, player.face - CONE_HALF, player.face + CONE_HALF); mctx.closePath(); mctx.clip();
-      const gc = mctx.createRadialGradient(cx, cy, ambR * 0.5, cx, cy, coneVision);
-      gc.addColorStop(0, "rgba(255,244,214,1)"); gc.addColorStop(0.55, "rgba(240,224,180,0.72)"); gc.addColorStop(1, "rgba(0,0,0,0)");
-      mctx.fillStyle = gc; mctx.fillRect(cx - coneVision, cy - coneVision, coneVision * 2, coneVision * 2); mctx.restore();
+      pintaLuz(sprCono, cx, cy, coneVision); mctx.restore();
     }
     const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
     // Cada compa lleva SU linterna: mismo cono que la tuya, algo más corto
@@ -1923,35 +1956,28 @@
     for (const c of compas) {
       if (!c.alive) continue;
       const sx = c.x - camX + shx, sy = c.y - camY + shy;
+      if (sx < -compaCono || sy < -compaCono || sx > VIEW_W + compaCono || sy > VIEW_H + compaCono) continue;   // fuera de pantalla: ni se calcula
       const halo = 46 * br;                                   // lo que alumbra a sus pies
-      const h = mctx.createRadialGradient(sx, sy, 0, sx, sy, halo);
-      h.addColorStop(0, "rgba(220,220,210,0.6)"); h.addColorStop(1, "rgba(0,0,0,0)");
-      mctx.fillStyle = h; mctx.beginPath(); mctx.arc(sx, sy, halo, 0, 7); mctx.fill();
+      pintaLuz(sprHalo, sx, sy, halo);
       const cb = c.batt / 100;
       const miCono = compaCono * (0.4 + 0.6 * cb);           // cuanta menos pila, menos alcance
       if (player.light && miCono > 1) {                      // igual que la tuya: sin pila NO se apaga, solo alumbra poco
         mctx.save();
         mctx.beginPath(); mctx.moveTo(sx, sy); mctx.arc(sx, sy, miCono, c.face - compaHalf, c.face + compaHalf); mctx.closePath(); mctx.clip();
-        const gc = mctx.createRadialGradient(sx, sy, halo * 0.5, sx, sy, miCono);
-        gc.addColorStop(0, "rgba(250,243,220," + (0.68 + 0.24 * cb).toFixed(3) + ")"); gc.addColorStop(0.55, "rgba(228,218,185,0.6)"); gc.addColorStop(1, "rgba(0,0,0,0)");
-        mctx.fillStyle = gc; mctx.fillRect(sx - miCono, sy - miCono, miCono * 2, miCono * 2);
+        pintaLuz(sprCono, sx, sy, miCono, 0.68 + 0.24 * cb);
         mctx.restore();
       }
-      if (now < c.hurtUntil) { const f = mctx.createRadialGradient(sx, sy, 0, sx, sy, 130); f.addColorStop(0, "rgba(255,240,200,0.9)"); f.addColorStop(1, "rgba(0,0,0,0)"); mctx.fillStyle = f; mctx.beginPath(); mctx.arc(sx, sy, 130, 0, 7); mctx.fill(); }
+      if (now < c.hurtUntil) pintaLuz(sprFogo, sx, sy, 130);
     }
     // Fogonazo de tu disparo
-    if (now < player.flashUntil) { const f = mctx.createRadialGradient(cx, cy, 0, cx, cy, 175); f.addColorStop(0, "rgba(255,243,210,0.95)"); f.addColorStop(1, "rgba(0,0,0,0)"); mctx.fillStyle = f; mctx.beginPath(); mctx.arc(cx, cy, 175, 0, 7); mctx.fill(); }
+    if (now < player.flashUntil) pintaLuz(sprFogo, cx, cy, 175);
     // Luz de los focos de pared encendidos
     for (const w of wallLights) {
       if (!w.on) continue;
       const sx = w.x - camX + shx, sy = w.y - camY + shy;
       if (sx < -80 || sy < -80 || sx > VIEW_W + 80 || sy > VIEW_H + 80) continue;
       const R = (generator.on ? 88 : 60) * (0.85 + Math.random() * 0.15);   // con energía alumbran bastante más
-      const g = mctx.createRadialGradient(sx, sy, 0, sx, sy, R);
-      g.addColorStop(0, "rgba(255,222,155,0.82)");
-      g.addColorStop(0.55, generator.on ? "rgba(208,168,98,0.36)" : "rgba(200,160,90,0.27)");
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      mctx.fillStyle = g; mctx.beginPath(); mctx.arc(sx, sy, R, 0, 7); mctx.fill();
+      pintaLuz(generator.on ? sprFocoOn : sprFoco, sx, sy, R);
     }
     ctx.globalCompositeOperation = "multiply"; ctx.drawImage(mask, 0, 0, VIEW_W, VIEW_H); ctx.globalCompositeOperation = "source-over";
   }
@@ -1971,28 +1997,34 @@
     if (!hablando.length) return;
     const camX = player.x - VIEW_W / 2, camY = player.y - VIEW_H / 2;
     ctx.save();
-    ctx.font = "bold 11px Courier New"; ctx.textBaseline = "alphabetic";
+    ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+    const FS = 13;
     hablando.forEach((c, i) => {
       const nom = c.name + ":";
-      const wn = ctx.measureText(nom).width;
-      ctx.font = "11px Courier New";
-      const wf = ctx.measureText(c.dice).width;
-      const w = wn + wf + 18, h = 17;
+      ctx.font = "bold " + FS + "px Courier New"; const wn = ctx.measureText(nom).width;
+      ctx.font = FS + "px Courier New";           const wf = ctx.measureText(c.dice).width;
+      const w = wn + wf + 24, h = 23, rad = 5;
       const cx = c.x - camX + shx, cy = c.y - camY + shy;                  // a coordenadas de pantalla
-      let bx = cx - w / 2, by = cy - PLAYER_R - 48 - i * 26;               // bien por encima de la cabeza y sin pisarse
-      bx = Math.max(4, Math.min(VIEW_W - w - 4, bx)); by = Math.max(4, by);  // y sin salirse de la pantalla
-      ctx.fillStyle = "rgba(10,12,16,0.9)";
-      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, h, 4) : ctx.rect(bx, by, w, h); ctx.fill();
-      ctx.strokeStyle = c.color; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx + 0.5, by + 0.5, w - 1, h - 1, 4) : ctx.rect(bx + 0.5, by + 0.5, w - 1, h - 1); ctx.stroke();
+      let bx = cx - w / 2, by = cy - PLAYER_R - 52 - i * 30;               // bien por encima de la cabeza y sin pisarse
+      bx = Math.max(4, Math.min(VIEW_W - w - 4, bx)); by = Math.max(4, by);
+      // sombra para que despegue del fondo
+      ctx.shadowColor = "rgba(0,0,0,0.85)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+      ctx.fillStyle = "rgba(8,10,14,0.96)";
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, h, rad) : ctx.rect(bx, by, w, h); ctx.fill();
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.fillStyle = "rgba(8,10,14,0.96)";                                 // piquito hacia el compa
+      ctx.beginPath(); ctx.moveTo(cx - 5, by + h - 1); ctx.lineTo(cx + 5, by + h - 1); ctx.lineTo(cx, by + h + 7); ctx.fill();
+      ctx.strokeStyle = c.color; ctx.globalAlpha = 0.9; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx + 0.75, by + 0.75, w - 1.5, h - 1.5, rad) : ctx.rect(bx + 0.75, by + 0.75, w - 1.5, h - 1.5); ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(10,12,16,0.9)";                                 // piquito hacia el compa
-      ctx.beginPath(); ctx.moveTo(cx - 4, by + h - 1); ctx.lineTo(cx + 4, by + h - 1); ctx.lineTo(cx, by + h + 6); ctx.fill();
-      ctx.textAlign = "left";
-      ctx.font = "bold 11px Courier New"; ctx.fillStyle = c.color;
-      ctx.fillText(nom, bx + 8, by + 12);
-      ctx.font = "11px Courier New"; ctx.fillStyle = c.estado === "derribado" ? "#ffb0a4" : "#e8eef6";
-      ctx.fillText(c.dice, bx + 8 + wn + 5, by + 12);
+      const ty = by + h - 7;
+      ctx.lineJoin = "round"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.9)";   // contorno negro: se lee sobre cualquier cosa
+      ctx.font = "bold " + FS + "px Courier New";
+      ctx.strokeText(nom, bx + 10, ty); ctx.fillStyle = c.color; ctx.fillText(nom, bx + 10, ty);
+      ctx.font = FS + "px Courier New";
+      ctx.strokeText(c.dice, bx + 10 + wn + 6, ty);
+      ctx.fillStyle = c.estado === "derribado" ? "#ffb4a6" : "#ffffff";
+      ctx.fillText(c.dice, bx + 10 + wn + 6, ty);
     });
     ctx.restore();
     ctx.textAlign = "left";
